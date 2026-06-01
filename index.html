@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Group of Three · World Cup 2026 Sweepstakes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,600;0,700;0,800;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#070b0a;
+  --panel:#0f1614;
+  --panel-2:#141d1a;
+  --line:#22302b;
+  --line-soft:#1a2421;
+  --text:#e9f2ec;
+  --muted:#8aa097;
+  --dim:#5f746c;
+  --lime:#c8ff4d;       /* Gideon */
+  --orange:#ff8a3d;     /* Ant */
+  --cyan:#4dd2ff;       /* Alex */
+  --gold:#ffce4d;
+  --pitch:#0c3b2a;
+  --radius:14px;
+  --maxw:1180px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(200,255,77,.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(77,210,255,.05), transparent 55%),
+    var(--ink);
+  color:var(--text);
+  font-family:'Archivo',-apple-system,system-ui,sans-serif;
+  font-size:15px;line-height:1.5;letter-spacing:.1px;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+/* film grain */
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+h1,h2,h3,.display{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:.5px;line-height:.98}
+.tnum{font-variant-numeric:tabular-nums}
+a{color:inherit}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+
+/* ===== top scoreboard ===== */
+.board{
+  position:sticky;top:0;z-index:50;
+  background:linear-gradient(180deg, rgba(7,11,10,.96), rgba(7,11,10,.86));
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.board-inner{max-width:var(--maxw);margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+.crest{width:34px;height:34px;border-radius:8px;background:
+  conic-gradient(from 220deg, var(--lime), var(--cyan), var(--orange), var(--lime));
+  display:grid;place-items:center;color:#06100c;font-family:'Anton';font-size:18px;box-shadow:0 0 0 1px rgba(255,255,255,.06)}
+.brand b{font-family:'Anton';font-size:19px;letter-spacing:.5px;display:block;line-height:1}
+.brand span{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:2px}
+.score-strip{display:flex;gap:10px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:5px 12px 5px 10px}
+.dot{width:10px;height:10px;border-radius:50%}
+.chip .nm{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.chip .pt{font-family:'Anton';font-size:18px;line-height:1}
+
+/* ===== nav tabs ===== */
+nav.tabs{position:sticky;top:55px;z-index:40;background:rgba(7,11,10,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-soft)}
+.tabs-inner{max-width:var(--maxw);margin:0 auto;padding:0 12px;display:flex;gap:2px;overflow-x:auto}
+.tab{background:none;border:none;color:var(--muted);padding:14px 16px;font-size:12px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.5px;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--lime);border-bottom-color:var(--lime)}
+
+main{padding:34px 0 90px}
+.view{display:none;animation:fade .4s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ===== headings ===== */
+.eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+.page-h{font-size:clamp(34px,6vw,62px);margin:0 0 4px}
+.page-sub{color:var(--muted);max-width:60ch;margin:0 0 28px}
+.accent{color:var(--lime)}
+
+/* ===== leaderboard ===== */
+.lead-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:34px}
+@media(max-width:760px){.lead-grid{grid-template-columns:1fr}}
+.lead-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:22px;overflow:hidden}
+.lead-card::after{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c)}
+.lead-card .rank{font-family:'Anton';font-size:13px;color:var(--ink);background:var(--c);display:inline-block;
+  padding:2px 9px;border-radius:6px;letter-spacing:1px}
+.lead-card .who{font-family:'Anton';font-size:30px;margin:14px 0 2px;color:var(--c)}
+.lead-card .tot{display:flex;align-items:baseline;gap:8px;margin:6px 0 14px}
+.lead-card .tot b{font-family:'Anton';font-size:54px;line-height:.9}
+.lead-card .tot small{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:2px}
+.mini{display:flex;gap:18px;border-top:1px solid var(--line-soft);padding-top:14px}
+.mini div{display:flex;flex-direction:column}
+.mini .k{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.mini .v{font-family:'Anton';font-size:22px}
+.breakdown{font-size:12px;color:var(--dim);margin-top:12px}
+.breakdown b{color:var(--muted);font-weight:700}
+
+/* ===== panels ===== */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:24px}
+.panel h2{font-size:22px;letter-spacing:1px;margin:0 0 4px}
+.panel .ph-sub{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:2px;margin-bottom:18px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+.legend span{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+
+/* chart */
+.chart-box{width:100%;overflow:hidden}
+svg.chart{width:100%;height:auto;display:block}
+
+/* ===== fixtures ===== */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.filters select,.filters input,.btn,.field input,.field select{
+  background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;
+  padding:9px 12px;font-family:inherit;font-size:13px}
+.btn{background:var(--lime);color:#06100c;border:none;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:11px 18px;border-radius:10px}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:700}
+.btn.ghost:hover{border-color:var(--lime);color:var(--lime)}
+.btn.sm{padding:7px 12px;font-size:11px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.md-head{font-family:'Anton';font-size:15px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;
+  margin:26px 0 12px;display:flex;align-items:center;gap:12px}
+.md-head::after{content:"";flex:1;height:1px;background:var(--line)}
+.match{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:12px;padding:13px 16px;margin-bottom:8px}
+.match:hover{border-color:var(--line)}
+.side{display:flex;align-items:center;gap:9px;min-width:0}
+.side.away{flex-direction:row-reverse;text-align:right}
+.side .fl{font-size:22px;line-height:1}
+.side .tn{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side .own{width:8px;height:8px;border-radius:50%;flex:none}
+.score{font-family:'Anton';font-size:24px;letter-spacing:1px;min-width:74px;text-align:center}
+.score.tbd{font-size:11px;color:var(--dim);letter-spacing:1px;font-family:'Archivo';font-weight:700}
+.score .vs{color:var(--dim);font-size:13px}
+.win-tag{font-size:9px;color:var(--ink);background:var(--gold);padding:1px 5px;border-radius:4px;letter-spacing:1px;margin-left:6px;vertical-align:middle}
+.meta-line{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin:18px 0 0}
+
+/* ===== players / teams ===== */
+.comp-block{margin-bottom:30px}
+.comp-title{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.comp-title .bar{width:6px;height:30px;border-radius:3px;background:var(--c)}
+.comp-title h2{font-size:28px;color:var(--c);margin:0}
+.comp-title .sumtot{margin-left:auto;font-family:'Anton';font-size:26px;color:var(--c)}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.pcard{background:var(--panel);border:1px solid var(--line-soft);border-radius:11px;padding:13px 14px}
+.pcard .pn{font-weight:700;font-size:15px;display:flex;align-items:center;gap:7px}
+.pcard .pt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.pcard .pg{font-family:'Anton';font-size:30px;margin-top:8px;color:var(--lime)}
+.pcard .pg small{font-family:'Archivo';font-size:10px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;display:block;font-weight:700}
+.pcard.top{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.flame{color:var(--gold)}
+
+table.teams{width:100%;border-collapse:collapse;font-size:13px}
+table.teams th{text-align:left;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);
+  padding:8px 8px;border-bottom:1px solid var(--line)}
+table.teams td{padding:9px 8px;border-bottom:1px solid var(--line-soft)}
+table.teams th.c,table.teams td.c{text-align:center}
+table.teams tr:hover td{background:var(--panel-2)}
+.tcell{display:flex;align-items:center;gap:8px}
+
+/* ===== draft ===== */
+.draft-stage{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:20px}
+.order-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.order-pill{display:flex;align-items:center;gap:9px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:10px;padding:8px 14px;font-weight:700}
+.order-pill .num{font-family:'Anton';color:var(--gold);font-size:18px}
+.on-clock{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--c,var(--lime));
+  border-radius:12px;padding:16px 18px;margin:16px 0;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.on-clock .lbl{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+.on-clock .nm{font-family:'Anton';font-size:30px;color:var(--c,var(--lime))}
+.on-clock .rd{margin-left:auto;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.pickable{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px}
+.pk{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line-soft);
+  border-radius:9px;padding:9px 11px;text-align:left;color:var(--text);font-size:13px;transition:.12s}
+.pk:hover{border-color:var(--lime);transform:translateY(-1px)}
+.pk .fl{font-size:18px}
+.pk .gp{font-size:10px;color:var(--dim);margin-left:auto}
+.roster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+@media(max-width:760px){.roster-grid{grid-template-columns:1fr}}
+.roster{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:11px;padding:12px}
+.roster h4{margin:0 0 8px;font-family:'Anton';font-size:18px;color:var(--c)}
+.roster ul{list-style:none;margin:0;padding:0}
+.roster li{font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line-soft);display:flex;gap:7px;align-items:center}
+.roster li:last-child{border-bottom:none}
+.roster .empty{color:var(--dim);font-style:italic}
+
+/* admin */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.adm-match{background:var(--panel);border:1px solid var(--line-soft);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.adm-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.adm-top .nm{font-weight:700}
+.adm-top input.sc{width:52px;text-align:center;font-family:'Anton';font-size:18px}
+.adm-scorers{margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:7px}
+.adm-scorers .row{display:flex;align-items:center;gap:10px;font-size:13px}
+.adm-scorers .row .who2{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stepper button{background:var(--panel-2);border:none;color:var(--text);width:28px;height:28px;font-size:16px}
+.stepper button:hover{background:var(--line)}
+.stepper span{min-width:28px;text-align:center;font-family:'Anton';font-size:15px}
+.io-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid var(--line);color:var(--muted);
+  border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:11px;margin-top:10px}
+.note{font-size:12px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);
+  border-radius:10px;padding:12px 14px;margin:6px 0 16px}
+.note b{color:var(--gold)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--lime);
+  color:#06100c;font-weight:800;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:200;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);letter-spacing:.5px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state .big{font-family:'Anton';font-size:40px;color:var(--text);margin-bottom:10px}
+.pen-toggle{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+.foot{color:var(--dim);font-size:12px;text-align:center;padding:20px;border-top:1px solid var(--line-soft);margin-top:40px}
+.foot a{color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
+.seg button{background:var(--panel-2);border:none;color:var(--muted);padding:7px 13px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
+.seg button.on{background:var(--lime);color:#06100c}
+</style>
+</head>
+<body>
+
+<header class="board">
+  <div class="board-inner">
+    <div class="brand">
+      <div class="crest">3</div>
+      <div><b>GROUP OF THREE</b><span>World Cup 2026 Sweepstakes</span></div>
+    </div>
+    <div class="score-strip" id="scoreStrip"></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-inner" id="tabs">
+    <button class="tab active" data-view="dashboard">Dashboard</button>
+    <button class="tab" data-view="fixtures">Fixtures &amp; Results</button>
+    <button class="tab" data-view="players">Players &amp; Teams</button>
+    <button class="tab" data-view="draft">Draft Room</button>
+    <button class="tab" data-view="admin">Update / Settings</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="dashboard"></section>
+
+  <!-- FIXTURES -->
+  <section class="view" id="fixtures"></section>
+
+  <!-- PLAYERS -->
+  <section class="view" id="players"></section>
+
+  <!-- DRAFT -->
+  <section class="view" id="draft"></section>
+
+  <!-- ADMIN -->
+  <section class="view" id="admin"></section>
+
+  <div class="foot">
+    Built for Gideon, Ant &amp; Alex · Group stage opens 11 June 2026 · Data is stored in your browser — use
+    <b>Update / Settings → Export</b> to share or back up. Fixtures use the official FIFA schedule; any match is editable in the admin panel.
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   THE GROUP OF THREE — World Cup 2026 sweepstakes tracker
+   Vanilla JS, single file. State persists to localStorage.
+   ============================================================ */
+
+const COMPETITORS = ["Gideon","Ant","Alex"];
+const CCOLOR = { Gideon:"var(--lime)", Ant:"var(--orange)", Alex:"var(--cyan)" };
+const CRAW   = { Gideon:"#c8ff4d",     Ant:"#ff8a3d",       Alex:"#4dd2ff" };
+
+/* ---- 48 teams, confirmed groups (Dec 2025 draw + playoff winners) ---- */
+const GROUPS = {
+  A:[["Mexico","🇲🇽"],["South Africa","🇿🇦"],["South Korea","🇰🇷"],["Czechia","🇨🇿"]],
+  B:[["Canada","🇨🇦"],["Bosnia & Herzegovina","🇧🇦"],["Qatar","🇶🇦"],["Switzerland","🇨🇭"]],
+  C:[["Brazil","🇧🇷"],["Morocco","🇲🇦"],["Haiti","🇭🇹"],["Scotland","🏴󠁧󠁢󠁳󠁣󠁴󠁿"]],
+  D:[["United States","🇺🇸"],["Paraguay","🇵🇾"],["Australia","🇦🇺"],["Türkiye","🇹🇷"]],
+  E:[["Germany","🇩🇪"],["Curaçao","🇨🇼"],["Côte d'Ivoire","🇨🇮"],["Ecuador","🇪🇨"]],
+  F:[["Netherlands","🇳🇱"],["Japan","🇯🇵"],["Sweden","🇸🇪"],["Tunisia","🇹🇳"]],
+  G:[["Belgium","🇧🇪"],["Egypt","🇪🇬"],["Iran","🇮🇷"],["New Zealand","🇳🇿"]],
+  H:[["Spain","🇪🇸"],["Cape Verde","🇨🇻"],["Saudi Arabia","🇸🇦"],["Uruguay","🇺🇾"]],
+  I:[["France","🇫🇷"],["Senegal","🇸🇳"],["Iraq","🇮🇶"],["Norway","🇳🇴"]],
+  J:[["Argentina","🇦🇷"],["Algeria","🇩🇿"],["Austria","🇦🇹"],["Jordan","🇯🇴"]],
+  K:[["Portugal","🇵🇹"],["DR Congo","🇨🇩"],["Uzbekistan","🇺🇿"],["Colombia","🇨🇴"]],
+  L:[["England","🏴󠁧󠁢󠁥󠁮󠁧󠁿"],["Croatia","🇭🇷"],["Ghana","🇬🇭"],["Panama","🇵🇦"]]
+};
+const FLAG = {};            // teamName -> emoji
+const TEAM_GROUP = {};      // teamName -> group letter
+const ALL_TEAMS = [];
+Object.entries(GROUPS).forEach(([g,arr])=>arr.forEach(([n,f])=>{FLAG[n]=f;TEAM_GROUP[n]=g;ALL_TEAMS.push(n);}));
+
+/* well-known names from qualified nations as quick autocomplete suggestions.
+   NOT official rosters — free entry of any player is still allowed. */
+const STAR_SUGGEST = [
+ // Argentina
+ "Lionel Messi","Lautaro Martínez","Julián Álvarez","Enzo Fernández","Alexis Mac Allister",
+ // France
+ "Kylian Mbappé","Ousmane Dembélé","Antoine Griezmann","Aurélien Tchouaméni",
+ // England
+ "Harry Kane","Jude Bellingham","Bukayo Saka","Phil Foden","Cole Palmer","Declan Rice",
+ // Spain
+ "Lamine Yamal","Pedri","Nico Williams","Rodri","Álvaro Morata","Dani Olmo",
+ // Portugal
+ "Cristiano Ronaldo","Rafael Leão","Bruno Fernandes","Bernardo Silva","Vitinha",
+ // Brazil
+ "Vinícius Júnior","Rodrygo","Raphinha","Bruno Guimarães",
+ // Germany
+ "Florian Wirtz","Jamal Musiala","Kai Havertz","Joshua Kimmich",
+ // Netherlands
+ "Cody Gakpo","Memphis Depay","Virgil van Dijk","Frenkie de Jong","Xavi Simons",
+ // Norway / Belgium / Egypt
+ "Erling Haaland","Martin Ødegaard","Kevin De Bruyne","Romelu Lukaku","Jérémy Doku","Mohamed Salah",
+ // Morocco / USA
+ "Achraf Hakimi","Brahim Díaz","Youssef En-Nesyri","Christian Pulisic","Folarin Balogun","Weston McKennie",
+ // Korea / Japan
+ "Heung-min Son","Lee Kang-in","Kim Min-jae","Takefusa Kubo","Kaoru Mitoma","Daichi Kamada",
+ // Uruguay / Croatia / Mexico
+ "Darwin Núñez","Federico Valverde","Luka Modrić","Joško Gvardiol","Raúl Jiménez","Santiago Giménez",
+ // Sweden / Ghana / Scotland
+ "Alexander Isak","Viktor Gyökeres","Dejan Kulusevski","Mohammed Kudus","Iñaki Williams","Scott McTominay","John McGinn",
+ // Colombia / Ecuador / Senegal
+ "James Rodríguez","Luis Díaz","Moisés Caicedo","Sadio Mané","Nicolas Jackson",
+ // Türkiye / Austria / Algeria / Switzerland
+ "Arda Güler","Hakan Çalhanoğlu","Kenan Yıldız","Marko Arnautović","Riyad Mahrez","Granit Xhaka","Breel Embolo",
+ // Iran / Czechia / New Zealand / Ivory Coast / Saudi Arabia
+ "Mehdi Taremi","Patrik Schick","Chris Wood","Sébastien Haller","Salem Al-Dawsari"
+];
+
+/* ---- build the 104-match fixture list ----
+   GROUPS are listed in official FIFA draw-position order (pos 1–4), confirmed
+   from the Dec 2025 draw. The within-group matchday template is FIFA's official
+   pattern (verified against Group A's published fixtures):
+     MD1: 1v2, 3v4   MD2: 1v3, 4v2   MD3: 1v4, 2v3
+   GROUP_DATES = [MD1, MD2, MD3] in June. MD1 & MD3 are the official dates from
+   each group's schedule window; MD2 is the midpoint of that official window
+   (matches the confirmed Group A value of 18 Jun). All editable in admin. */
+const GROUP_DATES = {
+  A:[11,18,24], B:[12,18,24], C:[13,19,24], D:[12,19,25],
+  E:[14,20,25], F:[14,20,25], G:[15,21,26], H:[15,21,26],
+  I:[16,21,26], J:[16,22,27], K:[17,22,27], L:[17,22,27]
+};
+function isoDate(y,m,d){return new Date(Date.UTC(y,m-1,d)).toISOString().slice(0,10);}
+function buildFixtures(){
+  const fx=[]; let id=1;
+  // round-robin pairings within each group by draw position (0=pos1 … 3=pos4)
+  const RR=[ [[0,1],[2,3]], [[0,2],[3,1]], [[0,3],[1,2]] ]; // MD1, MD2, MD3
+  Object.keys(GROUPS).forEach(g=>{
+    const t=GROUPS[g].map(x=>x[0]);
+    RR.forEach((pairs,md)=>{
+      const day=GROUP_DATES[g][md];
+      pairs.forEach(([a,b])=>{
+        fx.push({id:id++,stage:"Group "+g,group:g,matchday:md+1,date:isoDate(2026,6,day),
+                 home:t[a],away:t[b]});
+      });
+    });
+  });
+  // knockout fixtures (teams TBD until the bracket resolves; dates are official)
+  // [stage, [ [month,day], ... ] ] — official 2026 knockout windows
+  const ko=[
+    ["Round of 32",[[6,28],[6,28],[6,29],[6,29],[6,29],[6,30],[6,30],[6,30],
+                    [7,1],[7,1],[7,1],[7,2],[7,2],[7,3],[7,3],[7,3]]],
+    ["Round of 16",[[7,4],[7,4],[7,5],[7,5],[7,6],[7,6],[7,7],[7,7]]],
+    ["Quarter-final",[[7,9],[7,9],[7,11],[7,11]]],
+    ["Semi-final",[[7,14],[7,15]]],
+    ["Third place",[[7,18]]],
+    ["Final",[[7,19]]]
+  ];
+  ko.forEach(([stage,dates])=>{
+    dates.forEach(([month,day])=>{
+      fx.push({id:id++,stage:stage,group:null,matchday:null,
+               date:isoDate(2026,month,day),home:"TBD",away:"TBD",ko:true});
+    });
+  });
+  return fx;
+}
+const FIXTURES = buildFixtures();
+const FX_BY_ID = {}; FIXTURES.forEach(f=>FX_BY_ID[f.id]=f);
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const LS_KEY="go3_wc2026_v1";
+function blankState(){
+  return {
+    order:[...COMPETITORS],          // team-draft pick order (1st,2nd,3rd)
+    playerOrder:[...COMPETITORS],     // player-draft order
+    teamPicks:{},                     // teamName -> owner
+    players:[],                       // {id,name,team,owner}
+    results:{},                       // fixtureId -> {hs,as,winner:'home'|'away'|'draw',pen:null|'home'|'away',goals:{playerId:count},koHome,koAway}
+    teamDraftDone:false,
+    playerDraftDone:false,
+    _pid:1
+  };
+}
+let S = load();
+function load(){
+  try{const r=localStorage.getItem(LS_KEY); if(r){const o=JSON.parse(r); return Object.assign(blankState(),o);} }catch(e){}
+  return blankState();
+}
+function save(){ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} renderAll(); }
+
+/* ============================================================
+   SCORING ENGINE
+   ============================================================ */
+function teamOwner(team){ return S.teamPicks[team] || null; }
+function playerById(pid){ return S.players.find(p=>p.id===pid); }
+
+// returns the actual team names of a fixture (knockout uses stored ko teams)
+function fxTeams(f){
+  const r=S.results[f.id]||{};
+  const home = f.ko ? (r.koHome||f.home) : f.home;
+  const away = f.ko ? (r.koAway||f.away) : f.away;
+  return {home,away};
+}
+function isPlayed(f){ const r=S.results[f.id]; return r && r.hs!=null && r.as!=null; }
+
+// per-fixture point delta for a competitor: {win, goals}
+function fxDelta(f,comp){
+  const r=S.results[f.id]; if(!r||r.hs==null) return {win:0,goals:0,winTeam:null};
+  const {home,away}=fxTeams(f);
+  let win=0, winTeam=null;
+  if(r.winner==='home') winTeam=home;
+  else if(r.winner==='away') winTeam=away;
+  if(winTeam && teamOwner(winTeam)===comp) win=1;
+  let goals=0;
+  if(r.goals){ for(const pid in r.goals){ const p=playerById(+pid); if(p&&p.owner===comp) goals+=r.goals[pid]; } }
+  return {win,goals,winTeam};
+}
+
+function totals(comp){
+  let win=0,goals=0;
+  FIXTURES.forEach(f=>{const d=fxDelta(f,comp);win+=d.win;goals+=d.goals;});
+  return {win,goals,points:win+goals};
+}
+
+// team record (W/D/L, GF, GA) for all teams a competitor owns
+function teamRecord(comp){
+  let W=0,D=0,L=0,GF=0,GA=0,played=0;
+  FIXTURES.forEach(f=>{
+    if(!isPlayed(f))return;
+    const r=S.results[f.id]; const {home,away}=fxTeams(f);
+    const ownsHome=teamOwner(home)===comp, ownsAway=teamOwner(away)===comp;
+    if(ownsHome){played++;GF+=r.hs;GA+=r.as; if(r.winner==='home')W++;else if(r.winner==='away')L++;else D++;}
+    if(ownsAway){played++;GF+=r.as;GA+=r.hs; if(r.winner==='away')W++;else if(r.winner==='home')L++;else D++;}
+  });
+  return {W,D,L,GF,GA,played};
+}
+
+// per single team stats
+function singleTeamStats(team){
+  let W=0,D=0,L=0,GF=0,GA=0,P=0;
+  FIXTURES.forEach(f=>{
+    if(!isPlayed(f))return;
+    const r=S.results[f.id]; const {home,away}=fxTeams(f);
+    if(home===team){P++;GF+=r.hs;GA+=r.as;if(r.winner==='home')W++;else if(r.winner==='away')L++;else D++;}
+    else if(away===team){P++;GF+=r.as;GA+=r.hs;if(r.winner==='away')W++;else if(r.winner==='home')L++;else D++;}
+  });
+  return {W,D,L,GF,GA,P};
+}
+function playerGoals(pid){ let g=0; for(const fid in S.results){const r=S.results[fid]; if(r.goals&&r.goals[pid])g+=r.goals[pid];} return g; }
+
+// cumulative points-over-time series
+function pointsSeries(){
+  const played=FIXTURES.filter(isPlayed)
+    .sort((a,b)=> (a.date<b.date?-1:a.date>b.date?1:a.id-b.id));
+  const series={}; COMPETITORS.forEach(c=>series[c]=[0]);
+  const labels=["Start"];
+  played.forEach(f=>{
+    COMPETITORS.forEach(c=>{const d=fxDelta(f,c); series[c].push(series[c][series[c].length-1]+d.win+d.goals);});
+    const {home,away}=fxTeams(f);
+    labels.push((FLAG[home]||"")+" v "+(FLAG[away]||""));
+  });
+  return {series,labels,count:played.length};
+}
+
+/* ============================================================
+   RENDER — scoreboard + dispatch
+   ============================================================ */
+function renderAll(){
+  renderScoreboard(); renderDashboard(); renderFixtures(); renderPlayers(); renderDraft(); renderAdmin();
+}
+function renderScoreboard(){
+  const ranked=[...COMPETITORS].map(c=>({c,...totals(c)})).sort((a,b)=>b.points-a.points);
+  document.getElementById('scoreStrip').innerHTML = ranked.map(r=>`
+    <div class="chip">
+      <span class="dot" style="background:${CRAW[r.c]}"></span>
+      <span class="nm">${r.c}</span>
+      <span class="pt tnum" style="color:${CRAW[r.c]}">${r.points}</span>
+    </div>`).join('');
+}
+
+/* ---------------- DASHBOARD ---------------- */
+function renderDashboard(){
+  const el=document.getElementById('dashboard');
+  if(!S.teamDraftDone){
+    el.innerHTML = emptyState("Draft hasn't happened yet","Head to the Draft Room to split the 48 teams and pick your players. Live standings appear here once you're done.","draft");
+    return;
+  }
+  const data=COMPETITORS.map(c=>({c,...totals(c),rec:teamRecord(c)}))
+    .sort((a,b)=>b.points-a.points || b.win-a.win || b.goals-a.goals);
+  const rankName=["LEADER","2ND","3RD"];
+
+  let cards=data.map((d,i)=>`
+    <div class="lead-card" style="--c:${CRAW[d.c]}">
+      <span class="rank">${rankName[i]}</span>
+      <div class="who">${d.c}</div>
+      <div class="tot"><b class="tnum">${d.points}</b><small>points</small></div>
+      <div class="mini">
+        <div><span class="k">Team wins</span><span class="v tnum">${d.win}</span></div>
+        <div><span class="k">Player goals</span><span class="v tnum">${d.goals}</span></div>
+      </div>
+      <div class="breakdown">Teams record &nbsp;<b>${d.rec.W}W</b> · ${d.rec.D}D · ${d.rec.L}L &nbsp;|&nbsp; GF ${d.rec.GF} / GA ${d.rec.GA}</div>
+    </div>`).join('');
+
+  const ps=pointsSeries();
+  el.innerHTML=`
+    <p class="eyebrow">Live standings</p>
+    <h1 class="page-h">The <span class="accent">Table</span></h1>
+    <p class="page-sub">One point per team win, one point per goal by a drafted player. ${ps.count===0?'No matches played yet — the board lights up on 11 June.':ps.count+' matches counted so far.'}</p>
+    <div class="lead-grid">${cards}</div>
+    <div class="panel">
+      <h2>Points by Matchday</h2>
+      <div class="ph-sub">Cumulative points · every counted match</div>
+      <div class="legend">${COMPETITORS.map(c=>`<span><span class="dot" style="background:${CRAW[c]}"></span>${c}</span>`).join('')}</div>
+      <div class="chart-box">${lineChart(ps)}</div>
+    </div>
+    ${recentPanel()}`;
+}
+function recentPanel(){
+  const played=FIXTURES.filter(isPlayed).sort((a,b)=>(a.date<b.date?1:a.date>b.date?-1:b.id-a.id)).slice(0,6);
+  if(!played.length) return '';
+  return `<div class="panel"><h2>Latest Results</h2><div class="ph-sub">Most recent first</div>
+    ${played.map(matchRow).join('')}</div>`;
+}
+
+/* SVG line chart, hand-rolled (no deps) */
+function lineChart(ps){
+  const W=900,H=320,pad={l:38,r:16,t:18,b:34};
+  const n=ps.count;
+  let maxY=0; COMPETITORS.forEach(c=>ps.series[c].forEach(v=>maxY=Math.max(maxY,v)));
+  maxY=Math.max(maxY,4);
+  const ux=(i)=> n===0? pad.l : pad.l + (i/(n))*(W-pad.l-pad.r);
+  const uy=(v)=> H-pad.b - (v/maxY)*(H-pad.t-pad.b);
+  // gridlines
+  const ticks=4; let grid='';
+  for(let i=0;i<=ticks;i++){const v=Math.round(maxY*i/ticks);const y=uy(v);
+    grid+=`<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#1a2421"/>
+           <text x="${pad.l-8}" y="${y+4}" fill="#5f746c" font-size="11" text-anchor="end">${v}</text>`;}
+  let lines='';
+  COMPETITORS.forEach(c=>{
+    const pts=ps.series[c];
+    if(pts.length<=1 && n===0){return;}
+    const d=pts.map((v,i)=>`${i===0?'M':'L'}${ux(i).toFixed(1)},${uy(v).toFixed(1)}`).join(' ');
+    lines+=`<path d="${d}" fill="none" stroke="${CRAW[c]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lv=pts[pts.length-1], lx=ux(pts.length-1), ly=uy(lv);
+    lines+=`<circle cx="${lx}" cy="${ly}" r="3.5" fill="${CRAW[c]}"/>`;
+    if(n>0) lines+=`<text x="${Math.min(lx+6,W-pad.r-22)}" y="${ly+4}" fill="${CRAW[c]}" font-size="12" font-weight="700">${lv}</text>`;
+  });
+  const xlabel = n>0 ? `<text x="${(W)/2}" y="${H-6}" fill="#5f746c" font-size="11" text-anchor="middle">Match 1 → ${n}</text>`:'';
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">
+    ${grid}${lines}${xlabel}</svg>`;
+}
+
+/* ---------------- FIXTURES ---------------- */
+let fxFilter={group:"all",owner:"all",show:"all"};
+function renderFixtures(){
+  const el=document.getElementById('fixtures');
+  const groupOpts=['all',...Object.keys(GROUPS),'Knockouts'].map(g=>`<option value="${g}">${g==='all'?'All stages':(g==='Knockouts'?'Knockouts':'Group '+g)}</option>`).join('');
+  const ownerOpts=['all',...COMPETITORS].map(o=>`<option value="${o}">${o==='all'?'All owners':o}</option>`).join('');
+
+  let list=FIXTURES.slice();
+  if(fxFilter.group!=='all'){
+    if(fxFilter.group==='Knockouts') list=list.filter(f=>f.ko);
+    else list=list.filter(f=>f.group===fxFilter.group);
+  }
+  if(fxFilter.owner!=='all'){
+    list=list.filter(f=>{const {home,away}=fxTeams(f);return teamOwner(home)===fxFilter.owner||teamOwner(away)===fxFilter.owner;});
+  }
+  if(fxFilter.show==='played') list=list.filter(isPlayed);
+  if(fxFilter.show==='upcoming') list=list.filter(f=>!isPlayed(f));
+
+  // group by stage / matchday
+  const buckets={};
+  list.forEach(f=>{
+    const key = f.ko? f.stage : `Group ${f.group} · Matchday ${f.matchday}`;
+    (buckets[key]=buckets[key]||[]).push(f);
+  });
+  const order=Object.keys(buckets);
+
+  let body = order.length? order.map(k=>`
+    <div class="md-head">${k}</div>
+    ${buckets[k].map(matchRow).join('')}`).join('')
+    : `<div class="empty-state"><div class="big">No matches</div>Adjust the filters.</div>`;
+
+  el.innerHTML=`
+    <p class="eyebrow">The schedule</p>
+    <h1 class="page-h">Fixtures &amp; <span class="accent">Results</span></h1>
+    <p class="page-sub">All 104 matches. Owned teams are flagged with a coloured dot. Enter scores in <b>Update / Settings</b>.</p>
+    <div class="filters">
+      <select id="fGroup">${groupOpts}</select>
+      <select id="fOwner">${ownerOpts}</select>
+      <div class="seg">
+        ${['all','upcoming','played'].map(s=>`<button class="${fxFilter.show===s?'on':''}" data-show="${s}">${s}</button>`).join('')}
+      </div>
+    </div>
+    ${body}`;
+
+  document.getElementById('fGroup').value=fxFilter.group;
+  document.getElementById('fOwner').value=fxFilter.owner;
+  document.getElementById('fGroup').onchange=e=>{fxFilter.group=e.target.value;renderFixtures();};
+  document.getElementById('fOwner').onchange=e=>{fxFilter.owner=e.target.value;renderFixtures();};
+  el.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>{fxFilter.show=b.dataset.show;renderFixtures();});
+}
+function ownDot(team){const o=teamOwner(team);return o?`<span class="own" title="${o}" style="background:${CRAW[o]}"></span>`:'';}
+function matchRow(f){
+  const {home,away}=fxTeams(f);
+  const r=S.results[f.id];
+  const played=isPlayed(f);
+  let scoreHtml;
+  if(played){
+    const hw=r.winner==='home', aw=r.winner==='away';
+    scoreHtml=`<span class="score tnum">${r.hs}<span class="vs"> – </span>${r.as}${r.pen?`<div style="font-size:10px;color:var(--dim);font-family:Archivo;font-weight:700">pens: ${r.pen==='home'?home:away}</div>`:''}</span>`;
+  } else {
+    const d=new Date(f.date+'T00:00:00Z');
+    const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+    scoreHtml=`<span class="score tbd">${ds}</span>`;
+  }
+  return `<div class="match">
+    <div class="side"><span class="fl">${FLAG[home]||'⚽'}</span>${ownDot(home)}<span class="tn">${home}</span>${played&&r.winner==='home'?'<span class="win-tag">W</span>':''}</div>
+    ${scoreHtml}
+    <div class="side away"><span class="fl">${FLAG[away]||'⚽'}</span>${ownDot(away)}<span class="tn">${away}</span>${played&&r.winner==='away'?'<span class="win-tag">W</span>':''}</div>
+  </div>`;
+}
+
+/* ---------------- PLAYERS & TEAMS ---------------- */
+function renderPlayers(){
+  const el=document.getElementById('players');
+  if(!S.teamDraftDone){
+    el.innerHTML=emptyState("Nothing drafted yet","Run the draft first and your squads will show up here with live stats.","draft");
+    return;
+  }
+  let blocks=COMPETITORS.map(c=>{
+    const t=totals(c);
+    const myPlayers=S.players.filter(p=>p.owner===c).map(p=>({...p,g:playerGoals(p.id)})).sort((a,b)=>b.g-a.g);
+    const topG=Math.max(0,...myPlayers.map(p=>p.g));
+    const myTeams=ALL_TEAMS.filter(tm=>teamOwner(tm)===c)
+      .map(tm=>({tm,...singleTeamStats(tm)}))
+      .sort((a,b)=>(b.W-a.W)||(b.GF-a.GF)||a.tm.localeCompare(b.tm));
+
+    const playerCards = myPlayers.length? myPlayers.map(p=>`
+      <div class="pcard ${p.g>0&&p.g===topG?'top':''}">
+        <div class="pn">${p.g>0&&p.g===topG?'<span class="flame">🔥</span>':''}${p.name}</div>
+        <div class="pt">${FLAG[p.team]||''} ${p.team}</div>
+        <div class="pg tnum" style="color:${CRAW[c]}">${p.g}<small>goals · points</small></div>
+      </div>`).join('') : `<div class="note">No players drafted for ${c} yet.</div>`;
+
+    const teamRows = myTeams.map(t=>`
+      <tr>
+        <td><div class="tcell"><span style="font-size:18px">${FLAG[t.tm]||'⚽'}</span> ${t.tm}
+            <span style="color:var(--dim);font-size:11px">${TEAM_GROUP[t.tm]?'· Grp '+TEAM_GROUP[t.tm]:''}</span></div></td>
+        <td class="c tnum">${t.P}</td>
+        <td class="c tnum" style="color:var(--lime)">${t.W}</td>
+        <td class="c tnum">${t.D}</td>
+        <td class="c tnum">${t.L}</td>
+        <td class="c tnum">${t.GF}:${t.GA}</td>
+      </tr>`).join('');
+
+    return `<div class="comp-block">
+      <div class="comp-title" style="--c:${CRAW[c]}">
+        <span class="bar"></span><h2>${c}</h2>
+        <span class="sumtot">${t.points} pts</span>
+      </div>
+      <p class="meta-line" style="margin-top:0">Drafted players — each goal scores a point (${t.goals} total)</p>
+      <div class="grid-cards" style="margin:10px 0 18px">${playerCards}</div>
+      <p class="meta-line">Drafted teams — each win scores a point (${t.win} total)</p>
+      <div class="panel" style="margin-top:10px;padding:8px 14px">
+        <table class="teams"><thead><tr>
+          <th>Team</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GF:GA</th>
+        </tr></thead><tbody>${teamRows||'<tr><td colspan="6" style="color:var(--dim)">No teams</td></tr>'}</tbody></table>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <p class="eyebrow">Squads & form</p>
+    <h1 class="page-h">Players &amp; <span class="accent">Teams</span></h1>
+    <p class="page-sub">Your five drafted players and sixteen teams, with live stats as results come in. The 🔥 marks each owner's top scorer.</p>
+    ${blocks}`;
+}
+
+/* ---------------- DRAFT ROOM ---------------- */
+let draftMode=null; // null until a draft is in progress view
+function renderDraft(){
+  const el=document.getElementById('draft');
+
+  // ---- team draft order setup ----
+  const orderUI = `
+    <div class="draft-stage">
+      <p class="eyebrow">Step 1 · Pick order</p>
+      <h2 style="font-size:26px;margin:0 0 4px">Who picks first?</h2>
+      <p style="color:var(--muted);margin:0 0 6px">Snake format: 1‑2‑3, then 3‑2‑1, and so on for 16 rounds (16 teams each).</p>
+      <div class="order-row" id="orderPills">
+        ${S.order.map((c,i)=>`<div class="order-pill"><span class="num">${i+1}</span><span class="dot" style="background:${CRAW[c]}"></span>${c}</div>`).join('')}
+      </div>
+      <div class="io-row">
+        <button class="btn ghost sm" id="shuffleOrder">🎲 Randomise order</button>
+        <button class="btn ghost sm" id="rotateOrder">↻ Rotate</button>
+        ${S.teamDraftDone?'':`<button class="btn sm" id="startTeamDraft">Start team draft →</button>`}
+      </div>
+    </div>`;
+
+  // ---- team draft board ----
+  let teamBoard='';
+  const totalTeamPicks=Object.keys(S.teamPicks).length;
+  if(draftMode==='teams' || (totalTeamPicks>0 && !S.teamDraftDone)){
+    teamBoard = teamDraftBoard();
+  }
+
+  // ---- player draft ----
+  let playerBoard='';
+  if(S.teamDraftDone){
+    playerBoard = playerDraftBoard();
+  }
+
+  el.innerHTML = `
+    <p class="eyebrow">Draft room</p>
+    <h1 class="page-h">The <span class="accent">Draft</span></h1>
+    <p class="page-sub">Two drafts: first the 48 teams (16 each, snake), then five players each from any nation. Picks save automatically.</p>
+    ${orderUI}
+    ${teamBoard}
+    ${playerBoard}
+    ${S.teamDraftDone && S.playerDraftDone ? `<div class="note">✅ Both drafts complete. Jump to the <b>Dashboard</b> to watch the table, and use <b>Update / Settings</b> to log results.</div>`:''}
+  `;
+
+  // wire order controls
+  const sh=document.getElementById('shuffleOrder'); if(sh) sh.onclick=()=>{ if(S.teamDraftDone&&!confirm('Re-randomise? This only changes the saved order label, not completed picks.'))return; S.order=shuffle([...COMPETITORS]); save(); };
+  const ro=document.getElementById('rotateOrder'); if(ro) ro.onclick=()=>{ S.order=[S.order[1],S.order[2],S.order[0]]; save(); };
+  const st=document.getElementById('startTeamDraft'); if(st) st.onclick=()=>{ draftMode='teams'; renderDraft(); };
+
+  wireTeamDraft(); wirePlayerDraft();
+}
+
+function snakePicker(order, pickIndex){
+  // 16 rounds, 3 per round, snake
+  const round=Math.floor(pickIndex/3);
+  const within=pickIndex%3;
+  const seq = round%2===0 ? order : [...order].reverse();
+  return {picker:seq[within], round:round+1, within};
+}
+function teamDraftBoard(){
+  const picksMade=Object.keys(S.teamPicks).length;
+  const totalPicks=48;
+  const done = picksMade>=totalPicks;
+  const cur = snakePicker(S.order, picksMade);
+  const available=ALL_TEAMS.filter(t=>!S.teamPicks[t]);
+
+  const rosters = COMPETITORS.map(c=>{
+    const mine=ALL_TEAMS.filter(t=>S.teamPicks[t]===c);
+    return `<div class="roster" style="--c:${CRAW[c]}">
+      <h4>${c} <span style="font-size:12px;color:var(--dim);font-family:Archivo">${mine.length}/16</span></h4>
+      <ul>${mine.length?mine.map(t=>`<li><span>${FLAG[t]}</span>${t}</li>`).join(''):'<li class="empty">—</li>'}</ul>
+    </div>`;
+  }).join('');
+
+  let clock='';
+  if(!done){
+    clock=`<div class="on-clock" style="--c:${CRAW[cur.picker]}">
+      <div><div class="lbl">On the clock</div><div class="nm">${cur.picker}</div></div>
+      <div class="rd">Round ${cur.round} / 16 · pick ${picksMade+1} of 48</div>
+    </div>
+    <div class="pickable" id="teamPickable">
+      ${available.map(t=>`<button class="pk" data-team="${t}"><span class="fl">${FLAG[t]}</span>${t}<span class="gp">${TEAM_GROUP[t]}</span></button>`).join('')}
+    </div>`;
+  } else {
+    clock=`<div class="note">All 48 teams drafted. <button class="btn sm" id="confirmTeamDraft">Lock it in & start player draft →</button>
+      &nbsp;<button class="btn ghost sm" id="undoLastTeam">↩ Undo last pick</button></div>`;
+  }
+
+  return `<div class="draft-stage">
+    <p class="eyebrow">Step 2 · Team draft</p>
+    <h2 style="font-size:26px;margin:0 0 10px">48 Teams · 16 each</h2>
+    ${clock}
+    ${!done?`<div class="io-row" style="margin-top:12px"><button class="btn ghost sm" id="undoLastTeam">↩ Undo last pick</button></div>`:''}
+    <div class="roster-grid" style="margin-top:18px">${rosters}</div>
+  </div>`;
+}
+function wireTeamDraft(){
+  document.querySelectorAll('#teamPickable .pk').forEach(b=>b.onclick=()=>{
+    const picksMade=Object.keys(S.teamPicks).length;
+    const cur=snakePicker(S.order,picksMade);
+    S.teamPicks[b.dataset.team]=cur.picker; save();
+  });
+  const ult=document.getElementById('undoLastTeam'); if(ult) ult.onclick=undoLastTeamPick;
+  const ctd=document.getElementById('confirmTeamDraft'); if(ctd) ctd.onclick=()=>{S.teamDraftDone=true;save();toast("Teams locked — now draft players");};
+}
+function undoLastTeamPick(){
+  const keys=Object.keys(S.teamPicks);
+  if(!keys.length)return;
+  // remove the most recently added (object insertion order)
+  const last=keys[keys.length-1];
+  delete S.teamPicks[last]; S.teamDraftDone=false; save();
+}
+
+function playerDraftBoard(){
+  const order=S.playerOrder;
+  const picksMade=S.players.length;
+  const totalPicks=15;
+  const done=picksMade>=totalPicks;
+  const cur=snakePicker(order,picksMade);
+
+  const rosters=COMPETITORS.map(c=>{
+    const mine=S.players.filter(p=>p.owner===c);
+    return `<div class="roster" style="--c:${CRAW[c]}">
+      <h4>${c} <span style="font-size:12px;color:var(--dim);font-family:Archivo">${mine.length}/5</span></h4>
+      <ul>${mine.length?mine.map(p=>`<li><span>${FLAG[p.team]||'⚽'}</span>${p.name} <span style="color:var(--dim);font-size:11px">${p.team}</span></li>`).join(''):'<li class="empty">—</li>'}</ul>
+    </div>`;
+  }).join('');
+
+  let form='';
+  if(!done){
+    form=`<div class="on-clock" style="--c:${CRAW[cur.picker]}">
+      <div><div class="lbl">On the clock</div><div class="nm">${cur.picker}</div></div>
+      <div class="rd">Pick ${picksMade+1} of 15</div>
+    </div>
+    <div class="filters" style="margin-bottom:6px">
+      <div class="field" style="flex:2;min-width:200px"><label>Player name</label>
+        <input id="plName" list="starList" placeholder="e.g. Lionel Messi" autocomplete="off"></div>
+      <div class="field" style="flex:1;min-width:160px"><label>Team</label>
+        <select id="plTeam">${ALL_TEAMS.map(t=>`<option value="${t}">${FLAG[t]} ${t}</option>`).join('')}</select></div>
+      <div class="field" style="justify-content:flex-end"><label>&nbsp;</label>
+        <button class="btn" id="addPlayer">Draft player →</button></div>
+    </div>
+    <datalist id="starList">${STAR_SUGGEST.map(s=>`<option value="${s}">`).join('')}</datalist>`;
+  } else {
+    form=`<div class="note">All 15 players drafted. You're set! <button class="btn ghost sm" id="undoLastPlayer">↩ Undo last pick</button></div>`;
+  }
+
+  return `<div class="draft-stage">
+    <p class="eyebrow">Step 3 · Player draft</p>
+    <h2 style="font-size:26px;margin:0 0 10px">5 Players each</h2>
+    ${form}
+    ${!done?`<div class="io-row" style="margin-top:8px"><button class="btn ghost sm" id="undoLastPlayer">↩ Undo last pick</button></div>`:''}
+    <div class="roster-grid" style="margin-top:18px">${rosters}</div>
+  </div>`;
+}
+function wirePlayerDraft(){
+  const add=document.getElementById('addPlayer');
+  if(add) add.onclick=()=>{
+    const name=document.getElementById('plName').value.trim();
+    const team=document.getElementById('plTeam').value;
+    if(!name){toast("Enter a player name");return;}
+    const cur=snakePicker(S.playerOrder,S.players.length);
+    S.players.push({id:S._pid++,name,team,owner:cur.picker});
+    if(S.players.length>=15) S.playerDraftDone=true;
+    save();
+  };
+  const ul=document.getElementById('undoLastPlayer');
+  if(ul) ul.onclick=()=>{ S.players.pop(); S.playerDraftDone=false; save(); };
+}
+
+/* ---------------- ADMIN / UPDATE ---------------- */
+let admFilter="upcoming";
+function renderAdmin(){
+  const el=document.getElementById('admin');
+
+  let matchEntry='';
+  if(S.teamDraftDone){
+    let list=FIXTURES.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:a.id-b.id));
+    if(admFilter==='played') list=list.filter(isPlayed);
+    else if(admFilter==='upcoming') list=list.filter(f=>!isPlayed(f));
+    else if(admFilter==='mine') list=list.filter(f=>{const {home,away}=fxTeams(f);return teamOwner(home)||teamOwner(away);});
+    list=list.slice(0,60);
+    matchEntry=`
+      <div class="panel">
+        <h2>Log a Result</h2>
+        <div class="ph-sub">Enter the score · winner auto-detected · add goals for any drafted player in the match</div>
+        <div class="seg" style="margin:0 0 16px 0">
+          ${[['upcoming','To play'],['played','Played'],['mine','Mine'],['all','All']].map(([k,l])=>`<button class="${admFilter===k?'on':''}" data-adm="${l==='All'?'all':k}">${l}</button>`).join('')}
+        </div>
+        ${list.map(admMatch).join('') || '<div class="note">Nothing here.</div>'}
+      </div>`;
+  } else {
+    matchEntry=`<div class="note">Finish the draft before logging results.</div>`;
+  }
+
+  el.innerHTML=`
+    <p class="eyebrow">Scorekeeping & data</p>
+    <h1 class="page-h">Update / <span class="accent">Settings</span></h1>
+    <p class="page-sub">This is where Gideon (or whoever's keeping score) logs results during the tournament.</p>
+
+    ${matchEntry}
+
+    <div class="panel">
+      <h2>Auto-sync (optional)</h2>
+      <div class="ph-sub">Pull live scores & goalscorers automatically</div>
+      <div class="note">A static site can't poll a live football API on its own (CORS + the key would be exposed in the page). Two reliable options:
+        <br>• <b>Easiest:</b> log results above as matches finish — it takes a few seconds per game.
+        <br>• <b>Fully automatic:</b> deploy the included <b>netlify/functions/wc-results.js</b> with a free API-Football key, then hit Sync. See the README.
+      </div>
+      <div class="io-row">
+        <button class="btn ghost" id="syncBtn">⚡ Try auto-sync from /api results</button>
+      </div>
+      <div id="syncMsg" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Back up & Share</h2>
+      <div class="ph-sub">Everything lives in this browser — export to move it between devices or share with Ant & Alex</div>
+      <div class="io-row">
+        <button class="btn" id="exportBtn">⬇ Export JSON</button>
+        <button class="btn ghost" id="copyBtn">⧉ Copy to clipboard</button>
+        <button class="btn ghost" id="importBtn">⬆ Import from box below</button>
+        <button class="btn ghost" id="resetBtn" style="margin-left:auto;border-color:#5a2424;color:#ff9b9b">⟲ Reset everything</button>
+      </div>
+      <textarea class="io" id="ioBox" placeholder="Paste exported JSON here, then press Import…"></textarea>
+    </div>`;
+
+  el.querySelectorAll('[data-adm]').forEach(b=>b.onclick=()=>{admFilter=b.dataset.adm;renderAdmin();});
+  el.querySelectorAll('.adm-match').forEach(wireAdmMatch);
+
+  document.getElementById('exportBtn').onclick=exportJSON;
+  document.getElementById('copyBtn').onclick=()=>{navigator.clipboard.writeText(JSON.stringify(S)).then(()=>toast("Copied to clipboard"));};
+  document.getElementById('importBtn').onclick=importJSON;
+  document.getElementById('resetBtn').onclick=()=>{ if(confirm("Erase the entire draft and all results? This cannot be undone.")){S=blankState();save();toast("Reset done");}};
+  document.getElementById('syncBtn').onclick=trySync;
+}
+
+function admMatch(f){
+  const {home,away}=fxTeams(f);
+  const r=S.results[f.id]||{};
+  const played=isPlayed(f);
+  const d=new Date(f.date+'T00:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+  // drafted players whose team is in this match
+  const relevant=S.players.filter(p=>p.team===home||p.team===away);
+  const koInputs = f.ko ? `<div class="io-row" style="margin-bottom:8px">
+      <input class="field" style="width:160px" id="koh_${f.id}" placeholder="Home team" value="${r.koHome||''}" list="allTeamsList">
+      <input class="field" style="width:160px" id="koa_${f.id}" placeholder="Away team" value="${r.koAway||''}" list="allTeamsList">
+      <span style="font-size:11px;color:var(--dim)">${f.stage} · set the teams</span>
+    </div>` : '';
+
+  const scorers = relevant.length? `<div class="adm-scorers">
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)">Goals by drafted players in this match</div>
+      ${relevant.map(p=>{const g=(r.goals&&r.goals[p.id])||0;return `
+        <div class="row">
+          <span class="dot" style="background:${CRAW[p.owner]}"></span>
+          <span style="flex:1">${p.name} <span class="who2">${FLAG[p.team]} ${p.team} · ${p.owner}</span></span>
+          <span class="stepper">
+            <button data-step="-1" data-pl="${p.id}" data-fx="${f.id}">–</button>
+            <span id="g_${f.id}_${p.id}">${g}</span>
+            <button data-step="1" data-pl="${p.id}" data-fx="${f.id}">+</button>
+          </span>
+        </div>`;}).join('')}
+    </div>`: (played?'<div class="adm-scorers" style="color:var(--dim);font-size:12px">No drafted players in this match.</div>':'');
+
+  return `<div class="adm-match" data-fx="${f.id}">
+    ${koInputs}
+    <div class="adm-top">
+      <span style="font-size:18px">${FLAG[home]||'⚽'}</span>
+      <span class="nm" style="flex:0 1 auto">${home}</span>
+      <input class="field sc" id="hs_${f.id}" inputmode="numeric" value="${r.hs!=null?r.hs:''}" placeholder="–">
+      <span style="color:var(--dim)">v</span>
+      <input class="field sc" id="as_${f.id}" inputmode="numeric" value="${r.as!=null?r.as:''}" placeholder="–">
+      <span class="nm" style="flex:0 1 auto">${away}</span>
+      <span style="font-size:18px">${FLAG[away]||'⚽'}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--dim)">${d}${played?` · <span style="color:var(--lime)">logged</span>`:''}</span>
+    </div>
+    ${f.ko?`<label class="pen-toggle" style="margin-top:10px"><input type="checkbox" id="pen_${f.id}" ${r.pen?'checked':''}> decided on penalties (tick, then set the higher score for the winner — or use buttons below)</label>
+      <div class="io-row" style="margin-top:6px"><button class="btn ghost sm" data-penwin="home" data-fx="${f.id}">Pens: ${home}</button><button class="btn ghost sm" data-penwin="away" data-fx="${f.id}">Pens: ${away}</button></div>`:''}
+    ${scorers}
+    <div class="io-row" style="margin-top:12px">
+      <button class="btn sm" data-savefx="${f.id}">Save result</button>
+      ${played?`<button class="btn ghost sm" data-clearfx="${f.id}">Clear</button>`:''}
+    </div>
+  </div>
+  <datalist id="allTeamsList">${ALL_TEAMS.map(t=>`<option value="${t}">`).join('')}</datalist>`;
+}
+function wireAdmMatch(node){
+  const fid=+node.dataset.fx;
+  // steppers
+  node.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>{
+    const pl=+b.dataset.pl, step=+b.dataset.step;
+    const r=S.results[fid]=S.results[fid]||{goals:{}};
+    r.goals=r.goals||{};
+    r.goals[pl]=Math.max(0,(r.goals[pl]||0)+step);
+    document.getElementById(`g_${fid}_${pl}`).textContent=r.goals[pl];
+    // don't full re-render (keeps focus); update silently
+    try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
+    renderScoreboard();
+  });
+  // pen winner quick buttons
+  node.querySelectorAll('[data-penwin]').forEach(b=>b.onclick=()=>{
+    const r=S.results[fid]=S.results[fid]||{}; r.pen=b.dataset.penwin; r.winner=b.dataset.penwin;
+    toast(`Penalty winner set`); 
+  });
+  const sb=node.querySelector(`[data-savefx="${fid}"]`);
+  if(sb) sb.onclick=()=>saveResult(fid);
+  const cb=node.querySelector(`[data-clearfx="${fid}"]`);
+  if(cb) cb.onclick=()=>{delete S.results[fid];save();toast("Cleared");};
+}
+function saveResult(fid){
+  const f=FX_BY_ID[fid];
+  const hs=parseInt(document.getElementById('hs_'+fid).value,10);
+  const as=parseInt(document.getElementById('as_'+fid).value,10);
+  if(isNaN(hs)||isNaN(as)){toast("Enter both scores");return;}
+  const r=S.results[fid]=S.results[fid]||{goals:{}};
+  r.hs=hs; r.as=as; r.goals=r.goals||{};
+  if(f.ko){
+    const kh=document.getElementById('koh_'+fid), ka=document.getElementById('koa_'+fid);
+    if(kh&&kh.value.trim()) r.koHome=kh.value.trim();
+    if(ka&&ka.value.trim()) r.koAway=ka.value.trim();
+    const pen=document.getElementById('pen_'+fid);
+    if(pen&&pen.checked && r.pen){ /* winner already set via pen button */ }
+  }
+  // winner
+  if(hs>as) r.winner='home';
+  else if(as>hs) r.winner='away';
+  else { // draw on score
+    if(f.ko && r.pen){ r.winner=r.pen; } else r.winner='draw';
+  }
+  save(); toast("Result saved ✓");
+}
+
+/* ---------- import / export / sync ---------- */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='group-of-three-wc2026.json';
+  a.click(); toast("Exported");
+}
+function importJSON(){
+  const t=document.getElementById('ioBox').value.trim();
+  if(!t){toast("Paste JSON first");return;}
+  try{const o=JSON.parse(t); S=Object.assign(blankState(),o); save(); toast("Imported ✓");}
+  catch(e){toast("Invalid JSON");}
+}
+async function trySync(){
+  const msg=document.getElementById('syncMsg');
+  msg.textContent="Contacting /.netlify/functions/wc-results …";
+  try{
+    const res=await fetch('/.netlify/functions/wc-results');
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const applied=applySync(data);
+    save();
+    msg.innerHTML=`✅ Synced. Updated <b>${applied}</b> match${applied===1?'':'es'}. Review & adjust goalscorers above if needed.`;
+    toast("Synced from API");
+  }catch(e){
+    msg.innerHTML=`⚠️ Couldn't reach the serverless function (<code>${e.message}</code>). That's expected if you haven't deployed it yet — log results manually above, or see the README to enable auto-sync.`;
+  }
+}
+// data = array of {home,away,homeScore,awayScore,finished,scorers:[{name,team,count}]}
+function applySync(data){
+  if(!Array.isArray(data)) return 0;
+  const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  let n=0;
+  data.forEach(m=>{
+    if(!m.finished || m.homeScore==null) return;
+    // match a fixture by team names (group or KO)
+    const fx=FIXTURES.find(f=>{
+      const {home,away}=fxTeams(f);
+      return (norm(home)===norm(m.home)&&norm(away)===norm(m.away)) ||
+             (norm(home)===norm(m.away)&&norm(away)===norm(m.home));
+    });
+    if(!fx) return;
+    const {home}=fxTeams(fx);
+    const swap = norm(home)!==norm(m.home);
+    const r=S.results[fx.id]=S.results[fx.id]||{goals:{}};
+    r.hs = swap? m.awayScore : m.homeScore;
+    r.as = swap? m.homeScore : m.awayScore;
+    r.winner = r.hs>r.as?'home':r.as>r.hs?'away':(m.penWinner? (norm(m.penWinner)===norm(fxTeams(fx).home)?'home':'away'):'draw');
+    // match scorers to drafted players by fuzzy name
+    if(Array.isArray(m.scorers)){
+      r.goals=r.goals||{};
+      m.scorers.forEach(sc=>{
+        const p=S.players.find(pl=>norm(pl.name).includes(norm(sc.name).slice(0,8))||norm(sc.name).includes(norm(pl.name).slice(0,8)));
+        if(p) r.goals[p.id]=sc.count||1;
+      });
+    }
+    n++;
+  });
+  return n;
+}
+
+/* ---------------- helpers ---------------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function emptyState(title,body,goView){
+  return `<div class="empty-state"><div class="big">${title}</div><p style="max-width:46ch;margin:0 auto 18px">${body}</p>
+    <button class="btn" onclick="switchView('${goView}')">Go to Draft Room →</button></div>`;
+}
+let toastTimer;
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1900);}
+
+/* ---------------- nav ---------------- */
+function switchView(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id===v));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.getElementById('tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b)return; switchView(b.dataset.view);
+});
+
+/* boot */
+renderAll();
+</script>
+</body>
+</html>
