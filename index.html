@@ -1175,7 +1175,24 @@ async function trySync(){
 // Returns {updated:N, koFilled:N, timesUpdated:N}
 function applySync(data){
   if(!Array.isArray(data)) return {updated:0,koFilled:0,timesUpdated:0};
-  const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
+  // Alias map: API-Football names → local team names. Keys & values are normalized (lowercase, accent-stripped, letters only).
+  const ALIASES = {
+    'korearepublic':'southkorea','republicofkorea':'southkorea','korea':'southkorea',
+    'czechrepublic':'czechia',
+    'turkey':'turkiye',
+    'caboverde':'capeverde',
+    'congodr':'drcongo','democraticrepublicofthecongo':'drcongo','dremocraticrepublicofcongo':'drcongo',
+    'usa':'unitedstates','unitedstatesofamerica':'unitedstates',
+    'ivorycoast':'cotedivoire',
+    'bosniaandherzegovina':'bosniaherzegovina',
+    'iranislamicrepublic':'iran','islamicrepublicofiran':'iran','iriran':'iran'
+  };
+  const norm=s=>{
+    const base=(s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // strip accents
+      .replace(/[^a-z]/g,'');
+    return ALIASES[base]||base;
+  };
 
   // Map API's stage labels to our local stage names
   const STAGE_MAP={
