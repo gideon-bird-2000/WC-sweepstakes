@@ -417,6 +417,75 @@ const GROUP_DATES = {
   E:[14,20,25], F:[14,20,25], G:[15,21,26], H:[15,21,26],
   I:[16,21,26], J:[16,22,27], K:[17,22,27], L:[17,22,27]
 };
+
+/* Official kickoff times for all 104 matches, stored as UTC ISO strings.
+   Source: official FIFA schedule (BST = UTC+1 during the tournament window).
+   Browser auto-converts to viewer's local timezone. */
+const KICKOFFS = {
+ // Group A (1-6): Mex-SA, SK-CZ, Mex-SK, CZ-SA, Mex-CZ, SA-SK
+ 1:"2026-06-11T19:00:00Z", 2:"2026-06-12T02:00:00Z",
+ 3:"2026-06-19T01:00:00Z", 4:"2026-06-18T16:00:00Z",
+ 5:"2026-06-25T01:00:00Z", 6:"2026-06-25T01:00:00Z",
+ // Group B (7-12): Can-Bos, Qat-Swi, Can-Qat, Swi-Bos, Can-Swi, Bos-Qat
+ 7:"2026-06-12T19:00:00Z", 8:"2026-06-13T19:00:00Z",
+ 9:"2026-06-18T22:00:00Z", 10:"2026-06-18T19:00:00Z",
+ 11:"2026-06-24T19:00:00Z", 12:"2026-06-24T19:00:00Z",
+ // Group C (13-18): Bra-Mor, Hai-Sco, Bra-Hai, Sco-Mor, Bra-Sco, Mor-Hai
+ 13:"2026-06-13T22:00:00Z", 14:"2026-06-14T01:00:00Z",
+ 15:"2026-06-20T00:30:00Z", 16:"2026-06-19T22:00:00Z",
+ 17:"2026-06-24T22:00:00Z", 18:"2026-06-24T22:00:00Z",
+ // Group D (19-24): USA-Par, Aus-Tur, USA-Aus, Tur-Par, USA-Tur, Par-Aus
+ 19:"2026-06-13T01:00:00Z", 20:"2026-06-13T04:00:00Z",
+ 21:"2026-06-19T19:00:00Z", 22:"2026-06-20T03:00:00Z",
+ 23:"2026-06-26T02:00:00Z", 24:"2026-06-26T02:00:00Z",
+ // Group E (25-30): Ger-Cur, Civ-Ecu, Ger-Civ, Ecu-Cur, Ger-Ecu, Cur-Civ
+ 25:"2026-06-14T17:00:00Z", 26:"2026-06-14T23:00:00Z",
+ 27:"2026-06-20T20:00:00Z", 28:"2026-06-21T00:00:00Z",
+ 29:"2026-06-25T20:00:00Z", 30:"2026-06-25T20:00:00Z",
+ // Group F (31-36): Ned-Jpn, Swe-Tun, Ned-Swe, Tun-Jpn, Ned-Tun, Jpn-Swe
+ 31:"2026-06-14T20:00:00Z", 32:"2026-06-15T02:00:00Z",
+ 33:"2026-06-20T17:00:00Z", 34:"2026-06-20T04:00:00Z",
+ 35:"2026-06-25T23:00:00Z", 36:"2026-06-25T23:00:00Z",
+ // Group G (37-42): Bel-Egy, Irn-NZ, Bel-Irn, NZ-Egy, Bel-NZ, Egy-Irn
+ 37:"2026-06-15T19:00:00Z", 38:"2026-06-16T01:00:00Z",
+ 39:"2026-06-21T19:00:00Z", 40:"2026-06-22T01:00:00Z",
+ 41:"2026-06-27T03:00:00Z", 42:"2026-06-27T03:00:00Z",
+ // Group H (43-48): Spa-CV, KSA-Uru, Spa-KSA, Uru-CV, Spa-Uru, CV-KSA
+ 43:"2026-06-15T16:00:00Z", 44:"2026-06-15T22:00:00Z",
+ 45:"2026-06-21T16:00:00Z", 46:"2026-06-21T22:00:00Z",
+ 47:"2026-06-27T00:00:00Z", 48:"2026-06-27T00:00:00Z",
+ // Group I (49-54): Fra-Sen, Irq-Nor, Fra-Irq, Nor-Sen, Fra-Nor, Sen-Irq
+ 49:"2026-06-16T19:00:00Z", 50:"2026-06-16T22:00:00Z",
+ 51:"2026-06-22T21:00:00Z", 52:"2026-06-23T00:00:00Z",
+ 53:"2026-06-26T19:00:00Z", 54:"2026-06-26T19:00:00Z",
+ // Group J (55-60): Arg-Alg, Aut-Jor, Arg-Aut, Jor-Alg, Arg-Jor, Alg-Aut
+ 55:"2026-06-17T01:00:00Z", 56:"2026-06-16T04:00:00Z",
+ 57:"2026-06-22T17:00:00Z", 58:"2026-06-23T03:00:00Z",
+ 59:"2026-06-28T02:00:00Z", 60:"2026-06-28T02:00:00Z",
+ // Group K (61-66): Por-DRC, Uzb-Col, Por-Uzb, Col-DRC, Por-Col, DRC-Uzb
+ 61:"2026-06-17T17:00:00Z", 62:"2026-06-18T02:00:00Z",
+ 63:"2026-06-23T17:00:00Z", 64:"2026-06-24T02:00:00Z",
+ 65:"2026-06-27T23:30:00Z", 66:"2026-06-27T23:30:00Z",
+ // Group L (67-72): Eng-Cro, Gha-Pan, Eng-Gha, Pan-Cro, Eng-Pan, Cro-Gha
+ 67:"2026-06-17T20:00:00Z", 68:"2026-06-17T23:00:00Z",
+ 69:"2026-06-23T20:00:00Z", 70:"2026-06-23T23:00:00Z",
+ 71:"2026-06-27T21:00:00Z", 72:"2026-06-27T21:00:00Z",
+ // Round of 32 (73-88) — official FIFA schedule
+ 73:"2026-06-28T19:00:00Z", 74:"2026-06-29T17:00:00Z", 75:"2026-06-29T20:30:00Z", 76:"2026-06-30T01:00:00Z",
+ 77:"2026-06-30T17:00:00Z", 78:"2026-06-30T21:00:00Z", 79:"2026-07-01T01:00:00Z", 80:"2026-07-01T16:00:00Z",
+ 81:"2026-07-01T20:00:00Z", 82:"2026-07-02T00:00:00Z", 83:"2026-07-02T19:00:00Z", 84:"2026-07-02T23:00:00Z",
+ 85:"2026-07-03T03:00:00Z", 86:"2026-07-03T18:00:00Z", 87:"2026-07-03T22:00:00Z", 88:"2026-07-04T01:30:00Z",
+ // Round of 16 (89-96)
+ 89:"2026-07-04T17:00:00Z", 90:"2026-07-04T21:00:00Z", 91:"2026-07-05T20:00:00Z", 92:"2026-07-06T00:00:00Z",
+ 93:"2026-07-06T19:00:00Z", 94:"2026-07-07T00:00:00Z", 95:"2026-07-07T16:00:00Z", 96:"2026-07-07T20:00:00Z",
+ // Quarter-finals (97-100)
+ 97:"2026-07-09T20:00:00Z", 98:"2026-07-10T19:00:00Z", 99:"2026-07-11T21:00:00Z", 100:"2026-07-12T01:00:00Z",
+ // Semi-finals (101-102)
+ 101:"2026-07-14T19:00:00Z", 102:"2026-07-15T19:00:00Z",
+ // Third place + Final
+ 103:"2026-07-18T21:00:00Z", 104:"2026-07-19T19:00:00Z"
+};
+function kickoffOf(fx){ return KICKOFFS[fx.id] || S.times[fx.id] || null; }
 function isoDate(y,m,d){return new Date(Date.UTC(y,m-1,d)).toISOString().slice(0,10);}
 function buildFixtures(){
   const fx=[]; let id=1;
@@ -670,12 +739,12 @@ function renderFixtures(){
   // chronological vs stage-grouped
   let body;
   if(fxFilter.sort==='chrono'){
-    const sortKey=f=>S.times[f.id]||(f.date+'T23:59:59Z'); // unknown times sort to end-of-day
+    const sortKey=f=>kickoffOf(f)||(f.date+'T23:59:59Z');
     list.sort((a,b)=> (new Date(sortKey(a))-new Date(sortKey(b))) || (a.id-b.id));
-    // group by calendar day for readability
+    // group by calendar day (local time) for readability
     const byDay={};
     list.forEach(f=>{
-      const iso=S.times[f.id]||f.date;
+      const iso=kickoffOf(f)||f.date;
       const d=new Date(iso);
       const key=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
       (byDay[key]=byDay[key]||[]).push(f);
@@ -697,15 +766,10 @@ function renderFixtures(){
       : `<div class="empty-state"><div class="big">No matches</div>Adjust the filters.</div>`;
   }
 
-  // hint banner if no kickoff times loaded yet
-  const haveAnyTimes = Object.keys(S.times||{}).length>0;
-  const hint = haveAnyTimes ? '' : `<div class="note" style="margin-bottom:18px">⏰ <b>Kickoff times haven't been loaded yet.</b> Hit <b>⚡ Try auto-sync</b> in Update / Settings once to populate exact kickoff times for all 104 matches (shown in your local timezone).</div>`;
-
   el.innerHTML=`
     <p class="eyebrow">The schedule</p>
     <h1 class="page-h">Fixtures &amp; <span class="accent">Results</span></h1>
-    <p class="page-sub">All 104 matches. Owned teams are flagged with a coloured dot. Enter scores in <b>Update / Settings</b>.</p>
-    ${hint}
+    <p class="page-sub">All 104 matches with official UK kickoff times (shown in your local timezone). Owned teams are flagged with a coloured dot. Enter scores in <b>Update / Settings</b>.</p>
     <div class="filters">
       <select id="fGroup">${groupOpts}</select>
       <select id="fOwner">${ownerOpts}</select>
@@ -730,14 +794,16 @@ function matchRow(f){
   const {home,away}=fxTeams(f);
   const r=S.results[f.id];
   const played=isPlayed(f);
-  const iso=S.times[f.id];
+  const iso=kickoffOf(f);
   let scoreHtml;
   if(played){
     const tline = iso?`<div style="font-size:9px;color:var(--dim);font-family:Archivo;font-weight:700;letter-spacing:.5px;margin-top:2px">${fmtKickoff(iso,false)}</div>`:'';
     scoreHtml=`<span class="score tnum">${r.hs}<span class="vs"> – </span>${r.as}${r.pen?`<div style="font-size:10px;color:var(--dim);font-family:Archivo;font-weight:700">pens: ${r.pen==='home'?home:away}</div>`:tline}</span>`;
   } else {
-    const d=new Date(f.date+'T00:00:00Z');
-    const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+    // show local-time date (derived from kickoff) and the kickoff time prominently
+    const dateSrc = iso || (f.date+'T00:00:00Z');
+    const d=new Date(dateSrc);
+    const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     const tline = iso?`<div style="font-size:11px;color:var(--gold);font-family:Archivo;font-weight:700;margin-top:3px">${fmtKickoff(iso,false)}</div>`:'';
     scoreHtml=`<span class="score tbd">${ds}${tline}</span>`;
   }
