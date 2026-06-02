@@ -1,35 +1,34 @@
 // netlify/functions/state.js
-// Shared state for the three competitors via Netlify Blobs (free, built-in).
-// GET  /.netlify/functions/state         -> latest state JSON (or null)
-// POST /.netlify/functions/state  + body -> overwrites the stored state
+// Shared state for the three competitors via Netlify Blobs.
+// GET  -> latest stored state (or null)
+// POST -> overwrites stored state with request body
 
 const { getStore } = require("@netlify/blobs");
 
 exports.handler = async function (event) {
   let store;
   try {
-    store = getStore({ name: "go3-state", consistency: "strong" });
+    store = getStore("go3-state");
   } catch (e) {
-    return json(500, { error: "Blobs unavailable: " + e.message });
+    return json(500, { error: "Blobs init failed: " + e.message });
   }
 
   if (event.httpMethod === "GET") {
     try {
-      const data = await store.get("state", { type: "json" });
-      return json(200, data || null);
+      const text = await store.get("state");
+      if (!text) return json(200, null);
+      return json(200, JSON.parse(text));
     } catch (e) {
-      // first request before anything written
       return json(200, null);
     }
   }
 
   if (event.httpMethod === "POST") {
     try {
-      const body = JSON.parse(event.body || "{}");
-      await store.setJSON("state", body);
+      await store.set("state", event.body || "{}");
       return json(200, { ok: true, t: Date.now() });
     } catch (e) {
-      return json(500, { error: String(e) });
+      return json(500, { error: "Save failed: " + e.message });
     }
   }
 
