@@ -465,6 +465,7 @@ function blankState(){
     teamPicks:{},                     // teamName -> owner
     players:[],                       // {id,name,team,owner}
     results:{},                       // fixtureId -> {hs,as,winner:'home'|'away'|'draw',pen:null|'home'|'away',goals:{playerId:count},koHome,koAway}
+    times:{},                         // fixtureId -> ISO datetime string (populated by sync)
     teamDraftDone:false,
     playerDraftDone:false,
     _pid:1
@@ -640,7 +641,16 @@ function lineChart(ps){
 }
 
 /* ---------------- FIXTURES ---------------- */
-let fxFilter={group:"all",owner:"all",show:"all"};
+let fxFilter={group:"all",owner:"all",show:"all",sort:"stage"};
+function fmtKickoff(iso, withDate){
+  if(!iso) return '';
+  const d=new Date(iso);
+  if(isNaN(d)) return '';
+  const t=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+  if(!withDate) return t;
+  const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  return ds+' · '+t;
+}
 function renderFixtures(){
   const el=document.getElementById('fixtures');
   const groupOpts=['all',...Object.keys(GROUPS),'Knockouts'].map(g=>`<option value="${g}">${g==='all'?'All stages':(g==='Knockouts'?'Knockouts':'Group '+g)}</option>`).join('');
@@ -657,28 +667,53 @@ function renderFixtures(){
   if(fxFilter.show==='played') list=list.filter(isPlayed);
   if(fxFilter.show==='upcoming') list=list.filter(f=>!isPlayed(f));
 
-  // group by stage / matchday
-  const buckets={};
-  list.forEach(f=>{
-    const key = f.ko? f.stage : `Group ${f.group} · Matchday ${f.matchday}`;
-    (buckets[key]=buckets[key]||[]).push(f);
-  });
-  const order=Object.keys(buckets);
+  // chronological vs stage-grouped
+  let body;
+  if(fxFilter.sort==='chrono'){
+    const sortKey=f=>S.times[f.id]||(f.date+'T23:59:59Z'); // unknown times sort to end-of-day
+    list.sort((a,b)=> (new Date(sortKey(a))-new Date(sortKey(b))) || (a.id-b.id));
+    // group by calendar day for readability
+    const byDay={};
+    list.forEach(f=>{
+      const iso=S.times[f.id]||f.date;
+      const d=new Date(iso);
+      const key=d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+      (byDay[key]=byDay[key]||[]).push(f);
+    });
+    body = Object.keys(byDay).length ? Object.entries(byDay).map(([day,games])=>`
+      <div class="md-head">${day}</div>
+      ${games.map(matchRow).join('')}`).join('')
+      : `<div class="empty-state"><div class="big">No matches</div>Adjust the filters.</div>`;
+  } else {
+    const buckets={};
+    list.forEach(f=>{
+      const key = f.ko? f.stage : `Group ${f.group} · Matchday ${f.matchday}`;
+      (buckets[key]=buckets[key]||[]).push(f);
+    });
+    const order=Object.keys(buckets);
+    body = order.length? order.map(k=>`
+      <div class="md-head">${k}</div>
+      ${buckets[k].map(matchRow).join('')}`).join('')
+      : `<div class="empty-state"><div class="big">No matches</div>Adjust the filters.</div>`;
+  }
 
-  let body = order.length? order.map(k=>`
-    <div class="md-head">${k}</div>
-    ${buckets[k].map(matchRow).join('')}`).join('')
-    : `<div class="empty-state"><div class="big">No matches</div>Adjust the filters.</div>`;
+  // hint banner if no kickoff times loaded yet
+  const haveAnyTimes = Object.keys(S.times||{}).length>0;
+  const hint = haveAnyTimes ? '' : `<div class="note" style="margin-bottom:18px">⏰ <b>Kickoff times haven't been loaded yet.</b> Hit <b>⚡ Try auto-sync</b> in Update / Settings once to populate exact kickoff times for all 104 matches (shown in your local timezone).</div>`;
 
   el.innerHTML=`
     <p class="eyebrow">The schedule</p>
     <h1 class="page-h">Fixtures &amp; <span class="accent">Results</span></h1>
     <p class="page-sub">All 104 matches. Owned teams are flagged with a coloured dot. Enter scores in <b>Update / Settings</b>.</p>
+    ${hint}
     <div class="filters">
       <select id="fGroup">${groupOpts}</select>
       <select id="fOwner">${ownerOpts}</select>
       <div class="seg">
         ${['all','upcoming','played'].map(s=>`<button class="${fxFilter.show===s?'on':''}" data-show="${s}">${s}</button>`).join('')}
+      </div>
+      <div class="seg" style="margin-left:auto">
+        ${[['stage','By stage'],['chrono','Chronological']].map(([k,l])=>`<button class="${fxFilter.sort===k?'on':''}" data-sort="${k}">${l}</button>`).join('')}
       </div>
     </div>
     ${body}`;
@@ -688,20 +723,23 @@ function renderFixtures(){
   document.getElementById('fGroup').onchange=e=>{fxFilter.group=e.target.value;renderFixtures();};
   document.getElementById('fOwner').onchange=e=>{fxFilter.owner=e.target.value;renderFixtures();};
   el.querySelectorAll('[data-show]').forEach(b=>b.onclick=()=>{fxFilter.show=b.dataset.show;renderFixtures();});
+  el.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{fxFilter.sort=b.dataset.sort;renderFixtures();});
 }
 function ownDot(team){const o=teamOwner(team);return o?`<span class="own" title="${o}" style="background:${CRAW[o]}"></span>`:'';}
 function matchRow(f){
   const {home,away}=fxTeams(f);
   const r=S.results[f.id];
   const played=isPlayed(f);
+  const iso=S.times[f.id];
   let scoreHtml;
   if(played){
-    const hw=r.winner==='home', aw=r.winner==='away';
-    scoreHtml=`<span class="score tnum">${r.hs}<span class="vs"> – </span>${r.as}${r.pen?`<div style="font-size:10px;color:var(--dim);font-family:Archivo;font-weight:700">pens: ${r.pen==='home'?home:away}</div>`:''}</span>`;
+    const tline = iso?`<div style="font-size:9px;color:var(--dim);font-family:Archivo;font-weight:700;letter-spacing:.5px;margin-top:2px">${fmtKickoff(iso,false)}</div>`:'';
+    scoreHtml=`<span class="score tnum">${r.hs}<span class="vs"> – </span>${r.as}${r.pen?`<div style="font-size:10px;color:var(--dim);font-family:Archivo;font-weight:700">pens: ${r.pen==='home'?home:away}</div>`:tline}</span>`;
   } else {
     const d=new Date(f.date+'T00:00:00Z');
     const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
-    scoreHtml=`<span class="score tbd">${ds}</span>`;
+    const tline = iso?`<div style="font-size:11px;color:var(--gold);font-family:Archivo;font-weight:700;margin-top:3px">${fmtKickoff(iso,false)}</div>`:'';
+    scoreHtml=`<span class="score tbd">${ds}${tline}</span>`;
   }
   return `<div class="match">
     <div class="side"><span class="fl">${FLAG[home]||'⚽'}</span>${ownDot(home)}<span class="tn">${home}</span>${played&&r.winner==='home'?'<span class="win-tag">W</span>':''}</div>
@@ -1124,6 +1162,7 @@ async function trySync(){
     const parts=[];
     if(r.updated>0) parts.push(`<b>${r.updated}</b> match${r.updated===1?'':'es'} updated`);
     if(r.koFilled>0) parts.push(`<b>${r.koFilled}</b> bracket slot${r.koFilled===1?'':'s'} resolved`);
+    if(r.timesUpdated>0) parts.push(`<b>${r.timesUpdated}</b> kickoff time${r.timesUpdated===1?'':'s'} loaded`);
     msg.innerHTML = parts.length
       ? `✅ Synced. ${parts.join(' &middot; ')}. Review goalscorers above if needed.`
       : `✅ Synced. Connected fine — no new results or bracket changes yet.`;
@@ -1133,9 +1172,9 @@ async function trySync(){
   }
 }
 // data = array of {home,away,homeScore,awayScore,finished,stage,date,penWinner,scorers:[{name,team,count}]}
-// Returns {updated:N, koFilled:N}
+// Returns {updated:N, koFilled:N, timesUpdated:N}
 function applySync(data){
-  if(!Array.isArray(data)) return {updated:0,koFilled:0};
+  if(!Array.isArray(data)) return {updated:0,koFilled:0,timesUpdated:0};
   const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
 
   // Map API's stage labels to our local stage names
@@ -1148,6 +1187,8 @@ function applySync(data){
     '3rd-place final':'Third place','3rd place final':'Third place','third place':'Third place','play-off for third place':'Third place'
   };
   const toLocalStage=s=>STAGE_MAP[(s||'').toLowerCase().trim()]||null;
+
+  S.times = S.times || {};
 
   // ----- 1) Bracket resolution: fill TBD knockout slots -----
   const apiByStage={};
@@ -1170,10 +1211,28 @@ function applySync(data){
         r.koAway=m.away;
         koFilled++;
       }
+      // also record the API kickoff datetime onto this KO slot (positional)
+      if(m.date) S.times[local.id]=m.date;
     });
   });
 
-  // ----- 2) Finished match results -----
+  // ----- 2) Update kickoff times for any fixture matched by team names -----
+  let timesUpdated=0;
+  data.forEach(m=>{
+    if(!m.date)return;
+    const fx=FIXTURES.find(f=>{
+      const {home,away}=fxTeams(f);
+      return (norm(home)===norm(m.home)&&norm(away)===norm(m.away))||
+             (norm(home)===norm(m.away)&&norm(away)===norm(m.home));
+    });
+    if(!fx)return;
+    if(S.times[fx.id]!==m.date){
+      S.times[fx.id]=m.date;
+      timesUpdated++;
+    }
+  });
+
+  // ----- 3) Finished match results -----
   let updated=0;
   data.forEach(m=>{
     if(!m.finished||m.homeScore==null)return;
@@ -1198,7 +1257,7 @@ function applySync(data){
     }
     updated++;
   });
-  return {updated,koFilled};
+  return {updated,koFilled,timesUpdated};
 }
 
 /* ---------------- helpers ---------------- */
