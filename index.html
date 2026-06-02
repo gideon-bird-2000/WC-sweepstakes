@@ -248,6 +248,7 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
     <button class="tab active" data-view="dashboard">Dashboard</button>
     <button class="tab" data-view="fixtures">Fixtures &amp; Results</button>
     <button class="tab" data-view="players">Players &amp; Teams</button>
+    <button class="tab" data-view="squads">Squads</button>
     <button class="tab" data-view="draft">Draft Room</button>
     <button class="tab" data-view="admin">Update / Settings</button>
   </div>
@@ -263,6 +264,9 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
 
   <!-- PLAYERS -->
   <section class="view" id="players"></section>
+
+  <!-- SQUADS -->
+  <section class="view" id="squads"></section>
 
   <!-- DRAFT -->
   <section class="view" id="draft"></section>
@@ -344,6 +348,61 @@ const STAR_SUGGEST = [
  // Iran / Czechia / New Zealand / Ivory Coast / Saudi Arabia
  "Mehdi Taremi","Patrik Schick","Chris Wood","Sébastien Haller","Salem Al-Dawsari"
 ];
+
+/* ---- Official confirmed squads, all 48 teams (FIFA June 2, 2026) ----
+   prov:true = preliminary/extended list; prov:false = final 26 confirmed. */
+const SQUADS={
+ "Mexico":{prov:false,GK:["Guillermo Ochoa","Raúl Rangel","Carlos Acevedo"],DF:["Jesús Gallardo","Israel Reyes","César Montes","Jorge Sánchez","Johan Vázquez","Mateo Chávez"],MF:["Gilberto Mora","Edson Álvarez","Orbelín Pineda","Luis Romo","Brian Gutiérrez","Obed Vargas","César Huerta","Luis Chávez","Erik Lira","Álvaro Fidalgo","Roberto Alvarado"],FW:["Armando González","Raúl Jiménez","Julián Quiñones","Santiago Giménez","Guillermo Martínez","Alexis Vega"]},
+ "South Africa":{prov:false,GK:["Ronwen Williams","Ricardo Goss","Sipho Chaine"],DF:["Khuliso Mudau","Nkosinathi Sibisi","Ime Okon","Khulumani Ndamane","Aubrey Modiba","Samukele Kabini","Thabang Matuludi","Olwethu Makhanya","Kamogelo Sebelebele","Bradley Cross","Mbekezeli Mbokazi"],MF:["Teboho Mokoena","Thalente Mbatha","Sphephelo Sithole","Jayden Adams"],FW:["Oswin Appollis","Iqraam Rayners","Tshepang Moremi","Relebohile Mofokeng","Evidence Makgopa","Themba Zwane","Lyle Foster","Thapelo Maseko"]},
+ "South Korea":{prov:false,GK:["Jo Hyeon-woo","Kim Seung-gyu","Song Bum-keun"],DF:["Kim Moon-hwan","Kim Min-jae","Kim Tae-hyon","Park Jin-seob","Seol Young-woo","Jens Castrop","Lee Ki-hyuk","Lee Tae-seok","Lee Han-beom","Cho Yu-min"],MF:["Kim Jin-gyu","Bae Jun-ho","Paik Seung-ho","Yang Hyun-jun","Eom Ji-sung","Lee Kang-in","Lee Dong-gyeong","Lee Jae-sung","Hwang In-beom","Hwang Hee-chan"],FW:["Son Heung-min","Oh Hyeon-gyu","Cho Gue-sung"]},
+ "Czechia":{prov:false,GK:["Lukáš Hornícek","Matej Kovár","Jindrich Stanek"],DF:["Vladimír Coufal","David Doudera","Tomáš Holeš","Robin Hranác","Štepán Chaloupek","David Jurásek","Ladislav Krejcí","Jaroslav Zelený","David Zima"],MF:["Lukáš Cerv","Vladimír Darida","Lukáš Provod","Michal Sadílek","Hugo Sochurek","Alexandr Sojka","Tomáš Soucek","Pavel Šulc","Denis Višinský"],FW:["Tomáš Chorý","Adam Hložek","Mojmír Chytil","Jan Kuchta","Patrik Schick"]},
+ "Canada":{prov:false,GK:["Maxime Crépeau","Owen Goodman","Dayne St. Clair"],DF:["Zorhan Bassong","Moïse Bombito","Derek Cornelius","Alphonso Davies","Luc de Fougerolles","Alistair Johnston","Alfie Jones","Jamie Knight-Lebel","Richie Laryea","Ralph Priso","Niko Sigur","Joel Waterman"],MF:["Ali Ahmed","Tajon Buchanan","Mathieu Choinière","Stephen Eustáquio","Marcelo Flores","Ismaël Koné","Liam Millar","Jayden Nelson","Jonathan Osorio","Nathan Saliba","Jacob Shaffelburg"],FW:["Jonathan David","Promise David","Daniel Jebbison","Cyle Larin","Tani Oluwaseyi","Jacen Russell-Rowe"]},
+ "Bosnia & Herzegovina":{prov:false,GK:["Nikola Vasilj","Martin Zlomislić","Osman Hadžikić"],DF:["Sead Kolašinac","Amar Dedić","Nihad Mujakić","Nikola Katić","Tarik Muharemović","Stjepan Radeljić","Dennis Hadžikadunić","Nidal Čelik"],MF:["Amir Hadžiahmetović","Ivan Šunjić","Ivan Bašić","Dženis Burnić","Ermin Mahmić","Benjamin Tahirović","Amar Memić","Armin Gigović"],FW:["Kerim Alajbegović","Esmir Bajraktarević","Ermedin Demirović","Jovo Lukić","Samed Baždar","Haris Tabaković","Edin Džeko"]},
+ "Qatar":{prov:true,GK:["Shehab Elleithy","Salah Zakaria","Meshaal Barsham","Mahmoud Abunada"],DF:["Boualem Khoukhi","Pedro Miguel","Sultan Al Brake","Tarek Salman","Al-Hashmi Al-Hussain","Ayoub Al-Alawi","Bassam Al-Rawi","Rayyan Al-Ali","Issa Laye","Lucas Mendes","Mohammed Waad","Niall Mason"],MF:["Ahmed Fathi","Jassim Gaber","Assim Madibo","Abdulaziz Hatem","Karim Boudiaf","Mohammed Mannai","Homam Al-Amin"],FW:["Almoez Ali","Akram Afif","Tahsin Mohammed","Edmílson Junior","Ahmed Al-Ganehi","Ahmed Alaa","Sebastián Soria","Hassan Al-Haydos","Mubarak Shannan","Mohammed Muntari","Yusuf Abdurisag"]},
+ "Switzerland":{prov:false,GK:["Gregor Kobel","Yvon Mvogo","Marvin Keller"],DF:["Manuel Akanji","Nico Elvedi","Ricardo Rodríguez","Silvan Widmer","Miro Muheim","Aurèle Amenda","Eray Cömert","Luca Jaquez"],MF:["Granit Xhaka","Johan Manzambi","Remo Freuler","Denis Zakaria","Ardon Jashari","Djibril Sow","Christian Fassnacht","Michel Aebischer","Fabian Rieder","Rubén Vargas"],FW:["Breel Embolo","Noah Okafor","Dan Ndoye","Zeki Amdouni","Cedric Itten"]},
+ "Brazil":{prov:false,GK:["Alisson","Ederson","Weverton"],DF:["Alex Sandro","Danilo","Leo Pereira","Bremer","Ibanez","Wesley","Marquinhos","Gabriel Magalhaes","Douglas Santos"],MF:["Bruno Guimaraes","Casemiro","Danilo Santos","Fabinho","Lucas Paqueta"],FW:["Endrick","Gabriel Martinelli","Igor Thiago","Matheus Cunha","Raphinha","Vinícius Júnior","Luiz Henrique","Neymar","Rayan"]},
+ "Morocco":{prov:false,GK:["Yassine Bounou","Munir El Kajou","Ahmed Reda Tagnaouti"],DF:["Achraf Hakimi","Noussair Mazraoui","Nayef Aguerd","Chadi Riad","Issa Diop","Anass Salah-Eddine","Zakaria El Ouahdi","Redouane Halhal","Youssef Belammari"],MF:["Sofyan Amrabat","Azzedine Ounahi","Neil El Aynaoui","Bilal El Khannouss","Ismael Saibari","Samir El Mourabet","Ayyoub Bouaddi","Gessime Yassine"],FW:["Brahim Díaz","Ayoub El Kaabi","Abde Ezzalzouli","Soufiane Rahimi","Chemsdine Talbi","Ayoube Amaimouni"]},
+ "Haiti":{prov:false,GK:["Jhony Placide","Alexandre Pierre","Josue Duverger"],DF:["Carlens Arcus","Wilguens Paugain","Duke Lacroix","Martin Experience","Jean-Kévin Duverne","Ricardo Ade","Hannes Delcroix","Keeto Thermoncy"],MF:["Carl Fred Sainté","Leverton Pierre","Danley Jean Jacques","Jean-Ricner Bellegarde","Woodensky Pierre","Dominique Simon"],FW:["Don Deedson Louicius","Josue Casimir","Derrick Etienne","Ruben Providence","Duckens Nazon","Frantzdy Pierrot","Wilson Isidor","Yassin Fortuné","Lenny Joseph"]},
+ "Scotland":{prov:false,GK:["Craig Gordon","Angus Gunn","Liam Kelly"],DF:["Grant Hanley","Jack Hendry","Aaron Hickey","Dom Hyam","Scott McKenna","Nathan Patterson","Anthony Ralston","Andy Robertson","John Souttar","Kieran Tierney"],MF:["Ryan Christie","Findlay Curtis","Lewis Ferguson","Ben Doak","Billy Gilmour","John McGinn","Kenny McLean","Scott McTominay"],FW:["Ché Adams","Lyndon Dykes","Lawrence Shankland","George Hirst","Ross Stewart"]},
+ "United States":{prov:false,GK:["Chris Brady","Matt Freese","Matt Turner"],DF:["Max Arfsten","Sergiño Dest","Alex Freeman","Mark McKenzie","Tim Ream","Chris Richards","Antonee Robinson","Miles Robinson","Joe Scally","Auston Trusty"],MF:["Tyler Adams","Sebastian Berhalter","Weston McKennie","Cristian Roldan","Brenden Aaronson","Christian Pulisic","Gio Reyna","Malik Tillman","Tim Weah","Alejandro Zendejas"],FW:["Folarin Balogun","Ricardo Pepi","Haji Wright"]},
+ "Paraguay":{prov:true,GK:["Roberto Fernández","Orlando Gill","Gastón Olveira","Carlos Coronel"],DF:["Gustavo Gómez","Júnior Alonso","Fabián Balbuena","Omar Alderete","Juan Cáceres","Blas Riveros","Alan Benítez","Agustín Sandez","Mateo Gamarra","Saúl Salcedo","José Canale","Diego León"],MF:["Miguel Almirón","Mathías Villasanti","Andrés Cubas","Ramón Sosa","Diego Gómez","Damián Bobadilla","Braian Ojeda","Matías Galarza","Enso González","Ruben Lezcano"],FW:["Óscar Romero","Ángel Romero","Antonio Sanabria","Julio Enciso","Gabriel Ávalos","Carlos González","Adam Bareiro"]},
+ "Australia":{prov:false,GK:["Mathew Ryan","Thomas Izzo","Danny Vukovic"],DF:["Aziz Behich","Harry Souttar","Rhyan Grant","Bailey Wright","Nathaniel Atkinson","Milos Degenek","Joel King","Lewis Miller","Kye Rowles","Thomas Deng"],MF:["Jackson Irvine","Riley McGree","Keanu Baccus","Nestory Irankunda","Ajdin Hrustic","Lewis O'Brien"],FW:["Mitchell Duke","Martin Boyle","Garang Kuol","Craig Goodwin","Ben Folami","Marco Tilio","Jason Geria"]},
+ "Türkiye":{prov:false,GK:["Altay Bayındır","Ersin Destanoğlu","Mert Günok","Uğurcan Çakır"],DF:["Abdülkerim Bardakcı","Ahmetcan Kaplan","Çağlar Söyüncü","Eren Elmalı","Ferdi Kadıoğlu","Merih Demiral","Mert Müldür","Ozan Kabak","Samet Akaydın","Zeki Çelik"],MF:["Atakan Karazor","Hakan Çalhanoğlu","İsmail Yüksek","Kaan Ayhan","Orkun Kökçü","Salih Özcan","Arda Güler"],FW:["Barış Alper Yılmaz","Can Uzun","İrfan Can Kahveci","Kenan Yıldız","Kerem Aktürkoğlu","Yunus Akgün"]},
+ "Germany":{prov:false,GK:["Oliver Baumann","Manuel Neuer","Alexander Nubel"],DF:["Waldemar Anton","Nathaniel Brown","David Raum","Antonio Rüdiger","Nico Schlotterbeck","Jonathan Tah","Malick Thiaw"],MF:["Nadiem Amiri","Leon Goretzka","Pascal Groß","Jamie Leweling","Joshua Kimmich","Jamal Musiala","Felix Nmecha","Alexander Pavlovic","Angelo Stiller","Florian Wirtz"],FW:["Maximilian Beier","Kai Havertz","Leroy Sané","Denis Undav","Nick Woltemade"]},
+ "Curaçao":{prov:false,GK:["Tyrick Bodak","Trevor Doornbusch","Eloy Room"],DF:["Riechedly Bazoer","Joshua Brenet","Roshon Van Eijma","Sherel Floranus","Deveron Fonville","Juriën Gaari","Armando Obispo","Shurandy Sambo"],MF:["Juninho Bacuna","Leandro Bacuna","Livano Comenencia","Kevin Felida","Ar'Jany Martha","Tyrese Noslin","Godfried Roemeratoe"],FW:["Jeremy Antonisse","Tahith Chong","Kenji Gorré","Sontje Hansen","Gervane Kastaneer","Brandley Kuwas","Jürgen Locadia","Jearl Margaritha"]},
+ "Côte d'Ivoire":{prov:false,GK:["Yahia Fofana","Mohamed Kone","Alban Lafont"],DF:["Emmanuel Agbadou","Clement Akpa","Ousmane Diomande","Guela Doue","Ghislain Konan","Odilon Kossonou","Evan Ndicka","Wilfried Singo"],MF:["Seko Fofana","Parfait Guiagon","Franck Kessie","Christ Oulai","Ibrahim Sangare","Jean-Michael Seri"],FW:["Simon Adingra","Ange-Yoan Bonny","Amad Diallo","Oumar Diakite","Yan Diomande","Evann Guessand","Nicolas Pepe","Elye Wahi"]},
+ "Ecuador":{prov:false,GK:["Hernán Galíndez","Moisés Ramírez","Gonzalo Valle"],DF:["Willian Pacho","Piero Hincapié","Joel Ordóñez","Félix Torres","Pervis Estupiñán","Ángelo Preciado","Jackson Porozo"],MF:["Moisés Caicedo","Jordy Alcívar","Denil Castillo","Alan Franco","Pedro Vite","Kendry Páez","Yaimar Medina"],FW:["Kevin Rodríguez","Anthony Valencia","Enner Valencia","Jordy Caicedo","Jeremy Arévalo","Gonzalo Plata","Alan Minda","John Yeboah","Nilson Angulo"]},
+ "Netherlands":{prov:false,GK:["Mark Flekken","Robin Roefs","Bart Verbruggen"],DF:["Nathan Aké","Denzel Dumfries","Jorrel Hato","Jurriën Timber","Micky van de Ven","Virgil van Dijk","Jan Paul van Hecke","Mats Wieffer"],MF:["Frenkie de Jong","Marten de Roon","Ryan Gravenberch","Justin Kluivert","Teun Koopmeiners","Tijjani Reijnders","Guus Til","Quinten Timber"],FW:["Brian Brobbey","Memphis Depay","Cody Gakpo","Noa Lang","Donyell Malen","Crysencio Summerville","Wout Weghorst"]},
+ "Japan":{prov:false,GK:["Zion Suzuki","Keisuke Osako","Tomoki Hayakawa"],DF:["Yuto Nagatomo","Shogo Taniguchi","Ko Itakura","Tsuyoshi Watanabe","Takehiro Tomiyasu","Hiroki Ito","Ayumu Seko","Yukinari Sugawara","Junnosuke Suzuki"],MF:["Wataru Endo","Junya Ito","Daichi Kamada","Ritsu Doan","Ao Tanaka","Kaishu Sano","Takefusa Kubo","Yuito Suzuki"],FW:["Daizen Maeda","Koki Ogawa","Ayase Ueda","Keito Nakamura","Kento Shiogai","Keisuke Goto"]},
+ "Sweden":{prov:false,GK:["Viktor Johansson","Kristoffer Nordfeldt","Jacob Widell Zetterström"],DF:["Hjalmar Ekdal","Gabriel Gudmundsson","Isak Hien","Emil Holm","Gustaf Lagerbielke","Victor Lindelöf","Eric Smith","Carl Starfelt","Elliot Stroud","Daniel Svensson"],MF:["Jesper Kalström","Yasin Ayari","Mattias Svanberg","Lucas Bergvall","Besfort Zeneli"],FW:["Taha Ali","Alexander Bernhardsson","Anthony Elanga","Viktor Gyökeres","Alexander Isak","Gustaf Nilsson","Benjamin Nygren","Ken Sema"]},
+ "Tunisia":{prov:false,GK:["Aymen Dahmen","Sabri Ben Hassen","Abdelmouhib Chamakh"],DF:["Montassar Talbi","Dylan Bronn","Omar Rekik","Adem Arous","Raed Chikhaoui","Yan Valery","Moutaz Neffati","Ali Abdi","Mohamed Ali Ben Hmida"],MF:["Ellyes Skhiri","Mohamed Hadj Mahmoud","Rani Khedira","Hannibal Mejbri","Anis Ben Slimane","Mortadha Ben Ouanes","Ismaël Gharbi"],FW:["Khalil Ayari","Sebastian Tounekti","Elias Achouri","Firas Chaouat","Hazem Mastouri","Elias Saad","Rayen Elloumi"]},
+ "Belgium":{prov:false,GK:["Mats Sels","Thibaut Courtois","Senne Lammens"],DF:["Arthur Theate","Brandon","Nathan Ngoy","Koni De Winter","Zeno Debast","Maxime De Cuyper","Joaquin Sese","Thomas Meunier","Timothy Castagne"],MF:["Nicolas Raskin","Axel Witsel","Hans Vanaken","Kevin De Bruyne","Youri Tielemans","Amadou Onana"],FW:["Jeremy Doku","Alexis Saelemaekers","Mathias Fernandez Bardo","Lucas Stassin","Romelu Lukaku","Leandro Trossard","Charles De Ketelaere","Dodi Lukebakio"]},
+ "Egypt":{prov:false,GK:["Mohamed El Shenawy","Mostafa Shobeir","El-Mahdy Soliman","Mohamed Alaa"],DF:["Mohamed Hany","Yasser Ibrahim","Tarek Alaa","Rami Rabia","Hamdy Fathy","Hossam Abdelmaguid","Ahmed Fattouh","Mohamed Abdelmonem","Karim Hafez"],MF:["Marwan Attia","Ahmed Sayed Zizo","Emam Ashour","Mahmoud Trezeguet","Mohanad Lasheen","Nabil Emad Donga","Mahmoud Saber","Mostafa Zico","Ibrahim Adel","Haissam Hassan","Mohamed Salah"],FW:["Omar Marmoush","Aqtay Abdallah","Hamza Abdelkarim"]},
+ "Iran":{prov:false,GK:["Alireza Beiranvand","Seyed Hossein Hosseini","Mohammad Khalifeh","Payam Niazmand"],DF:["Danial Eiri","Ehsan Hajsafi","Saleh Hardani","Hossein Kanaani","Shoja Khalilzadeh","Milad Mohammadi","Ali Nemati","Omid Noorafkan","Ramin Rezaeian"],MF:["Rouzbeh Cheshmi","Saeid Ezatolahi","Mehdi Ghaedi","Saman Ghoddos","Mohammad Ghorbani","Alireza Jahanbakhsh","Mohammad Mohebi","Mehdi Torabi","Aria Yousefi"],FW:["Ali Alipour","Dennis Dargahi","Hadi Habibinejad","Amirhossein Hosseinzadeh","Amirhossein Mahmoudi","Mehdi Taremi"]},
+ "New Zealand":{prov:false,GK:["Max Crocombe","Alex Paulsen","Michael Woud"],DF:["Tim Payne","Francis De Vries","Tyler Bindon","Michael Boxall","Liberato Cacace","Nando Pijnaker","Finn Surman","Callan Elliot","Tommy Smith"],MF:["Joe Bell","Marko Stamenić","Alex Rufer","Ryan Thomas","Lachlan Bayliss"],FW:["Matt Garbett","Chris Wood","Sarpreet Singh","Eli Just","Kosta Barbarouses","Ben Waine","Ben Old","Callum McCowatt","Jesse Randall"]},
+ "Spain":{prov:false,GK:["Unai Simon","David Raya","Joan Garcia"],DF:["Marc Cucurella","Pau Cubarsi","Erick García","Marcos Llorente","Pedro Porro","Alejandro Grimaldo","Marc Pubill","Aymeric Laporte"],MF:["Pedri","Fabian Ruiz","Martin Zubimendi","Gavi","Rodri","Alex Baena","Mikel Merino"],FW:["Dani Olmo","Mikel Oyarzabal","Nico Williams","Yeremy Pino","Ferran Torres","Borja Iglesias","Victor Munoz","Lamine Yamal"]},
+ "Cape Verde":{prov:false,GK:["Carlos Dos Santos","Marcio Rosa","Vozinha"],DF:["Diney Borges","Kelvin Pires","Stopira","Logan Costa","Roberto Lopes","Sidny Cabral","Steven Moreira","Wagner Pina"],MF:["Jamiro Monteiro","Deroy Duarte","João Paulo Fernandes","Kevin Pina","Laros Duarte","Telmo Arcanjo","Yannick Semedo"],FW:["Dailon Livramento","Garry Rodrigues","Gilson Benchimol","Jovane Cabral","Nuno Da Costa","Rya Mendes","Willy Semedo","Helio Carela"]},
+ "Saudi Arabia":{prov:false,GK:["Mohammed Al Owais","Nawaf Al Aqidi","Ahmed Al Kassar"],DF:["Abdulelah Al Amri","Hassan Tambakti","Jehad Thikri","Ali Lajami","Hassan Kadesh","Saud Abdulhamid","Mohammed Abu Al Shamat","Ali Majrashi","Moteb Al Harbi","Nawaf Boushal","Sultan Al-Ghannam"],MF:["Mohammed Kanno","Abdullah Al Khaibari","Ziyad Al Johani","Nasser Al Dawsari","Musab Al Juwayr","Alaa Al Hajji","Salem Al Dawsari","Khalid Al Ghannam","Ayman Yahya"],FW:["Firas Al Buraikan","Saleh Al Shehri","Abdullah Al Hamdan"]},
+ "Uruguay":{prov:false,GK:["Sergio Rochet","Fernando Muslera","Santiago Mele"],DF:["Guillermo Varela","Ronald Araújo","José María Giménez","Santiago Bueno","Sebastián Cáceres","Mathías Olivera","Joaquín Piquerez","Matías Viña"],MF:["Manuel Ugarte","Rodrigo Bentancur","Federico Valverde","Agustín Canobbio","Giorgian de Arrascaeta","Nicolás de la Cruz","Rodrigo Zalazar","Facundo Pellistri","Maximiliano Araújo","Brian Rodríguez"],FW:["Rodrigo Aguirre","Federico Viñas","Darwin Núñez"]},
+ "France":{prov:false,GK:["Mike Maignan","Robin Risser","Brice Samba"],DF:["Lucas Digne","Malo Gusto","Lucas Hernandez","Theo Hernandez","Ibrahima Konaté","Jules Koundé","Maxence Lacroix","William Saliba","Dayot Upamecano"],MF:["N'Golo Kanté","Manu Koné","Adrien Rabiot","Aurélien Tchouameni","Warren Zaïre-Emery"],FW:["Maghnes Akliouche","Bradley Barcola","Rayan Cherki","Ousmane Dembélé","Désiré Doué","Jean-Philippe Mateta","Kylian Mbappé","Michael Olise","Marcus Thuram"]},
+ "Senegal":{prov:false,GK:["Edouard Mendy","Yehvann Diouf","Mory Diaw"],DF:["Krepin Diatta","Antonine Mendy","Abdoulaye Seck","Kalidou Koulibaly","Ilay Camara","Moussa Niakhate","Mamadou Sarr","El-Hadji Malick Diouf","Moustapha Mbow","Ismail Jakobs"],MF:["Idrissa Gana Gueye","Habib Diarra","Pape Matar Sarr","Pape Alassane Gueye","Lamine Camara","Pathe Ciss","Bara Ndiaye"],FW:["Sadio Mane","Bamba Dieng","Iliman Ndiaye","Nicolas Jackson","Assane Diao","Ibrahim Mbaye","Cherif Ndiaye","Ismaila Sarr"]},
+ "Iraq":{prov:true,GK:[],DF:[],MF:[],FW:[]},
+ "Norway":{prov:false,GK:["Ørjan Nyland","Egil Selvik","Sander Tangvik"],DF:["Kristoffer Ajer","Fredrik André Bjørkan","Sondre Langås","Henrik Falchener","Torbjørn Heggem","Marcus Holmgren Pedersen","Julian Ryerson","Leo Skiri Østigård","David Møller Wolfe"],MF:["Thelo Aasgaard","Sander Berge","Patrick Berg","Fredrik Aursnes","Oscar Bobb","Morten Thorsby","Kristian Thorstvedt","Martin Ødegaard"],FW:["Antonio Nusa","Jens Petter Hauge","Andreas Schjelderup","Erling Haaland","Alexander Sørloth","Jørgen Strand Larsen"]},
+ "Argentina":{prov:false,GK:["Juan Musso","Gerónimo Rulli","Emiliano Martínez"],DF:["Leonardo Balerdi","Nicolás Tagliafico","Gonzalo Montiel","Lisandro Martínez","Cristian Romero","Nicolás Otamendi","Facundo Medina","Nahuel Molina"],MF:["Leandro Paredes","Rodrigo de Paul","Valentín Barco","Giovani Lo Celso","Ezequiel Palacios","Alexis Mac Allister","Enzo Fernández"],FW:["Julián Álvarez","Lionel Messi","Nicolás González","Thiago Almada","Giuliano Simeone","Nico Paz","Lautaro Martínez"]},
+ "Algeria":{prov:false,GK:["Luca Zidane","Oussama Benbot","Melvin Mastil","Abdelatif Ramdane"],DF:["Rafik Belghali","Samir Chergui","Rayan Aït-Nouri","Jaouen Hadjam","Aïssa Mandi","Ramy Bensebaïni","Zineddine Belaïd","Achref Abada","Mohamed Amine Tougaï"],MF:["Nabil Bentaleb","Hicham Boudaoui","Houssem Aouar","Farès Chaïbi","Ibrahim Maza","Yacine Titraoui","Ramiz Zerrouki"],FW:["Mohamed Amine Amoura","Nadhir Benbouali","Adil Boulbina","Farès Ghedjemis","Amine Gouiri","Anis Hadj Moussa","Riyad Mahrez"]},
+ "Austria":{prov:false,GK:["Alexander Schlager","Florian Wiegele","Patrick Pents"],DF:["David Affengruber","Kevin Danso","Stefan Posch","Philipp Lienhart","Philipp Mwene","Konrad Laimer","Michael Svoboda","David Alaba"],MF:["Xaver Schlager","Nicolas Seiwald","Marcel Sabitzer","Florian Grillitsch","Carney Chukwuemeka","Roman Schmid","Christoph Baumgartner","Alexander Prass","Alessandro Schöpf"],FW:["Marko Arnautović","Michael Gregoritsch","Saša Kalajdžić","Patrick Wimmer"]},
+ "Jordan":{prov:false,GK:["Yazid Abu Layla","Abdullah Al-Fakhouri","Noor Bani Attieh","Ahmad Juaidi"],DF:["Abdullah Naseeb","Yazan Al Arab","Mohammad Abu Al Nadi","Saleem Obeid","Saad Al Rawashdeh","Ehsan Haddad","Ahmad Assaf","Anas Badawi","Mohannad Abu Taha","Mohammad Abu Ghosh"],MF:["Ibrahim Saadeh","Amer Jamoos","Nizar Al Rashdan","Noor Al Rawabdeh","Yousef Qasha","Rajaei Ayed","Mohammad Al Daoud"],FW:["Mahmoud Al Mardi","Mousa Al Tamari","Ibrahim Sabra","Ouda Al Fakhouri","Mohammad Abu Zreiq","Ali Al Ezzaizeh","Ali Olwan"]},
+ "Portugal":{prov:false,GK:["Diogo Costa","José Sá","Rui Silva","Ricardo Velho"],DF:["Diogo Dalot","Matheus Nunes","Nélson Semedo","João Cancelo","Nuno Mendes","Gonçalo Inácio","Renato Veiga","Rúben Dias","Tomás Araújo"],MF:["Rúben Neves","Samuel Costa","João Neves","Vitinha","Bruno Fernandes","Bernardo Silva"],FW:["João Félix","Trincão","Francisco Conceição","Pedro Neto","Rafael Leão","Gonçalo Guedes","Gonçalo Ramos","Cristiano Ronaldo"]},
+ "DR Congo":{prov:false,GK:["Timothy Fayulu","Lionel Mpasi","Mike Epolo"],DF:["Aaron Wan-Bissaka","Gédéon Kalulu","Joris Kayembe","Arthur Masuaku","Steve Kapuadi","Rocky Bushiri","Axel Tuanzebe","Chancel Mbemba","Dylan Batubinsika"],MF:["Noah Sadiki","Samuel Moutoussamy","Edo Kayembe","Nathan Mukau","Charles Pickel","Théo Bongonda","Gaël Kakuta"],FW:["Meschack Elia","Fiston Mayele","Cédric Bakambu","Simon Banza","Yoane Wissa"]},
+ "Uzbekistan":{prov:false,GK:["Vladimir Nazarov","Utkir Vusupov","Botirali Eragshev","Abdouvokhid Nematov"],DF:["Ibrokhimkhalil Yuldoshev","Avazbek Ulmasaliev","Jakhongir Urozov","Rustamjon Ashurmatov","Mukhammadkodir Hamarlaiev","Umarbek Eshmurodov","Abdukodir Khusanov","Abdulla Abdullaev","Farrukh Sayfiev","Khojiakbar Alijonov","Sherzod Nasrullaev","Behruz Karimov","Diyor Ortikboev"],MF:["Kuvondik Ruziev","Sherzod Esanov","Nodirbek Abdurazzokov","Odiljon Khamrobekov","Umarali Rakhmonaliev","Alisher Odilov","Sardorbek Bakhrovmov","Akmal Mozgovoy","Otabek Shukurov","Jamshid Iskanderov","Jasurbek Jalolddinov","Azizjon Ganie"],FW:["Abbosbek Fayzullaev","Jalolddin Masharipov","Dostonbek Khamdamov","Oston Urunov","Azizbek Amonov","Khusain Norchaev","Sherzod Temirov","Igor Sergeev","Eldor Shomurodov"]},
+ "Colombia":{prov:false,GK:["Camilo Vargas","Álvaro Montero","David Ospina"],DF:["Davinson Sánchez","Jhon Lucumí","Yerry Mina","Willer Ditta","Daniel Muñoz","Santiago Arias","Johan Mojica","Deiver Machado"],MF:["Richard Ríos","Jefferson Lerma","Kevin Castaño","Jhon Arias","Jorge Carrascal","Juan Fernando Quintero","James Rodríguez","Jaminton Campaz"],FW:["Juan Camilo Hernández","Luis Díaz","Carlos Andrés Gómez","Jhon Córdoba"]},
+ "England":{prov:false,GK:["Jordan Pickford","Dean Henderson","James Trafford"],DF:["Reece James","Tino Livramento","Marc Guehi","Ezri Konsa","John Stones","Jarell Quansah","Nico O'Reilly","Dan Burn","Djed Spence"],MF:["Declan Rice","Elliot Anderson","Jude Bellingham","Jordan Henderson","Morgan Rogers","Kobbie Mainoo","Eberechi Eze"],FW:["Harry Kane","Ivan Toney","Ollie Watkins","Bukayo Saka","Noni Madueke","Marcus Rashford","Anthony Gordon"]},
+ "Croatia":{prov:false,GK:["Dominik Livaković","Dominik Kotarski","Ivor Pandur"],DF:["Joško Gvardiol","Duje Ćaleta-Car","Josip Šutalo","Josip Stanišić","Marin Pongračić","Martin Erlić","Luka Vušković"],MF:["Luka Modrić","Mateo Kovačić","Mario Pašalić","Nikola Vlašić","Luka Sučić","Martin Baturina","Kristijan Jakić","Petar Sučić","Nikola Moro","Toni Fruk"],FW:["Ivan Perišić","Andrej Kramarić","Ante Budimir","Marco Pašalić","Petar Musa","Igor Matanović"]},
+ "Ghana":{prov:true,GK:["Benjamin Asare","Lawrence Ati-Zigi","Joseph Anang","Solomon Agbasi"],DF:["Baba Abdul Rahman","Gideon Mensah","Marvin Senaya","Alidu Seidu","Abdul Mumin","Jerome Opoku","Jonas Adjetey","Kojo Oppong Peprah","Alexander Djiku","Elisha Owusu"],MF:["Thomas Partey","Kwasi Sibo","Augustine Boakye","Caleb Yirenkyi","Abdul Fatawu Issahaku"],FW:["Kamal Deen Sulemana","Christopher Bonsu Baah","Ernest Nuamah","Antoine Semenyo","Brandon Thomas-Asante","Prince Kwabena Adu","Iñaki Williams","Jordan Ayew"]},
+ "Panama":{prov:false,GK:["Luis Mejía","Orlando Mosquera","César Samudio"],DF:["Amir Murillo","José Córdoba","César Blackman","Andrés Andrade","Éric Davis","Roderick Miller","Jiovany Ramos","Jorge Gutiérrez","Fidel Escobar","Edgardo Fariña"],MF:["Aníbal Godoy","Adalberto Carrasquilla","Cristian Martínez","Carlos Harvey","José Luis Rodríguez","César Yanis","Alberto Quintero","Azarias Londoño"],FW:["Ismael Díaz","José Fajardo","Tomás Rodríguez","Cecilio Waterman"]}
+};
+
+let squadSearch='',squadCountry='All',squadPosition='All',squadOpen=null;
 
 /* ---- build the 104-match fixture list ----
    GROUPS are listed in official FIFA draw-position order (pos 1–4), confirmed
@@ -496,7 +555,7 @@ function pointsSeries(){
    RENDER — scoreboard + dispatch
    ============================================================ */
 function renderAll(){
-  renderScoreboard(); renderDashboard(); renderFixtures(); renderPlayers(); renderDraft(); renderAdmin();
+  renderScoreboard(); renderDashboard(); renderFixtures(); renderPlayers(); renderSquads(); renderDraft(); renderAdmin();
 }
 function renderScoreboard(){
   const ranked=[...COMPETITORS].map(c=>({c,...totals(c)})).sort((a,b)=>b.points-a.points);
@@ -1120,6 +1179,141 @@ function switchView(v){
 document.getElementById('tabs').addEventListener('click',e=>{
   const b=e.target.closest('.tab'); if(!b)return; switchView(b.dataset.view);
 });
+
+/* ---------------- SQUADS BROWSER ---------------- */
+const POS_LABEL={GK:'Goalkeepers',DF:'Defenders',MF:'Midfielders',FW:'Forwards'};
+const POS_SHORT={GK:'GK',DF:'DF',MF:'MF',FW:'FW'};
+function renderSquads(){
+  const el=document.getElementById('squads');
+  const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const q=norm(squadSearch);
+  const anyFilter = !!q || squadCountry!=='All' || squadPosition!=='All';
+
+  // drafted player lookup for highlighting
+  const draftedMap={};
+  S.players.forEach(p=>{draftedMap[norm(p.name)]={owner:p.owner,name:p.name};});
+
+  // build the filter row HTML (always visible)
+  const countryOpts = ['All'].concat([...ALL_TEAMS].sort()).map(t=>
+    `<option value="${t}" ${squadCountry===t?'selected':''}>${t==='All'?'All countries':`${FLAG[t]||''} ${t}`}</option>`
+  ).join('');
+  const posOpts = [['All','All positions'],['GK','Goalkeepers'],['DF','Defenders'],['MF','Midfielders'],['FW','Forwards']].map(([k,l])=>
+    `<option value="${k}" ${squadPosition===k?'selected':''}>${l}</option>`
+  ).join('');
+
+  const fieldCss = "background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:11px 14px;font-family:inherit;font-size:14px";
+  const filterRow = `
+    <div style="display:grid;grid-template-columns:1fr 220px 200px;gap:10px;margin-bottom:18px" class="sqfilters">
+      <input id="sqSearch" style="${fieldCss}" placeholder="🔍 Search player name…" value="${squadSearch.replace(/"/g,'&quot;')}">
+      <select id="sqCountry" style="${fieldCss}">${countryOpts}</select>
+      <select id="sqPosition" style="${fieldCss}">${posOpts}</select>
+    </div>
+    <style>@media(max-width:760px){.sqfilters{grid-template-columns:1fr!important}}</style>
+    ${anyFilter?`<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;font-size:12px;color:var(--muted)">
+      <button class="btn ghost sm" id="sqClear">↻ Clear filters</button>
+      <span id="sqCount"></span>
+    </div>`:''}`;
+
+  const header = `
+    <p class="eyebrow">All 48 confirmed squads</p>
+    <h1 class="page-h">Squad <span class="accent">Browser</span></h1>
+    <p class="page-sub">Filter by player name, country, or position. Coloured dots mark players already drafted by Gideon, Ant or Alex.</p>
+    ${filterRow}`;
+
+  if (anyFilter) {
+    // ---- LIST MODE ----
+    const teamsScope = squadCountry==='All' ? ALL_TEAMS : [squadCountry];
+    const posScope = squadPosition==='All' ? ['GK','DF','MF','FW'] : [squadPosition];
+    const hits=[];
+    teamsScope.forEach(team=>{
+      const sq=SQUADS[team]; if(!sq)return;
+      posScope.forEach(pos=>(sq[pos]||[]).forEach(pl=>{
+        if(!q || norm(pl).includes(q) || norm(team).includes(q))
+          hits.push({pl,team,pos});
+      }));
+    });
+
+    const rows = hits.length ? hits.map(h=>{
+      const d=draftedMap[norm(h.pl)];
+      return `<div style="display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid ${d?CRAW[d.owner]:'var(--line-soft)'};border-radius:10px;padding:10px 14px;margin-bottom:7px">
+        <span style="font-size:20px">${FLAG[h.team]||'⚽'}</span>
+        <span style="flex:1;font-weight:600">${h.pl}${d?` <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${CRAW[d.owner]};margin-left:4px;vertical-align:middle" title="Drafted by ${d.owner}"></span>`:''}</span>
+        <span style="background:var(--panel-2);border:1px solid var(--line);font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;padding:3px 8px;border-radius:5px;font-weight:700">${POS_SHORT[h.pos]}</span>
+        <span style="font-size:12px;color:var(--muted);min-width:100px;text-align:right">${h.team}</span>
+      </div>`;
+    }).join('') : '<div class="empty-state"><div class="big">No players match</div><p>Try clearing a filter.</p></div>';
+
+    el.innerHTML = header + rows;
+    const cnt=document.getElementById('sqCount'); if(cnt) cnt.textContent = `${hits.length} player${hits.length===1?'':'s'}`;
+  } else {
+    // ---- GRID MODE ----
+    const cards = ALL_TEAMS.map(team=>{
+      const sq=SQUADS[team]||{GK:[],DF:[],MF:[],FW:[]};
+      const total=(sq.GK||[]).length+(sq.DF||[]).length+(sq.MF||[]).length+(sq.FW||[]).length;
+      const owns=teamOwner(team);
+      const open=squadOpen===team;
+      const draftedInTeam=S.players.filter(p=>p.team===team);
+
+      let detail='';
+      if(open){
+        const body = total===0
+          ? `<div style="color:var(--dim);font-size:12px;padding:12px 0">Squad not yet confirmed — check back soon.</div>`
+          : ['GK','DF','MF','FW'].map(pos=>{
+              const pl=sq[pos]||[];
+              if(!pl.length)return '';
+              return `<div style="margin-top:12px">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:7px">${POS_LABEL[pos]}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  ${pl.map(name=>{
+                    const d=draftedMap[norm(name)];
+                    return `<span style="background:${d?CRAW[d.owner]+'22':'var(--panel-2)'};border:1px solid ${d?CRAW[d.owner]:'var(--line-soft)'};border-radius:8px;padding:4px 10px;font-size:12px;display:inline-flex;align-items:center;gap:6px">${name}${d?`<span style="width:6px;height:6px;border-radius:50%;background:${CRAW[d.owner]};flex:none"></span>`:''}</span>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('');
+        detail=`<div style="padding:14px 0 4px;border-top:1px solid var(--line-soft);margin-top:12px">
+          ${sq.prov?`<div style="font-size:11px;color:var(--orange);margin-bottom:8px">⚠ Preliminary squad — final list may differ</div>`:''}
+          ${draftedInTeam.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Drafted players: ${draftedInTeam.map(p=>`<span style="color:${CRAW[p.owner]};font-weight:700">${p.name}</span>`).join(', ')}</div>`:''}
+          ${body}
+          <div style="font-size:11px;color:var(--dim);margin-top:12px">${total} players listed</div>
+        </div>`;
+      }
+
+      return `<div class="panel" style="padding:14px 16px;cursor:pointer;margin-bottom:10px;${open?'border-color:var(--lime)':''}" data-sqt="${team}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:28px;line-height:1">${FLAG[team]||'⚽'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Anton';font-size:18px;line-height:1;${owns?'color:'+CRAW[owns]:''}">${team}</div>
+            <div style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-top:3px">Group ${TEAM_GROUP[team]}${owns?' · <span style="color:'+CRAW[owns]+'">'+owns+"'s"+'</span>':''}</div>
+          </div>
+          <div style="text-align:right;flex:none">
+            ${total?`<div style="font-family:'Anton';font-size:22px;color:${owns?CRAW[owns]:'var(--muted)'}">
+              ${sq.GK.length}<span style="font-size:11px;color:var(--dim);margin:0 2px">GK</span>${sq.DF.length}<span style="font-size:11px;color:var(--dim);margin:0 2px">DF</span>${sq.MF.length}<span style="font-size:11px;color:var(--dim);margin:0 2px">MF</span>${sq.FW.length}<span style="font-size:11px;color:var(--dim);margin:0 2px">FW</span>
+            </div>`:'<span style="color:var(--dim);font-size:11px">TBC</span>'}
+            <div style="font-size:12px;color:var(--dim);margin-top:2px">${draftedInTeam.length?`<span style="color:var(--gold)">${draftedInTeam.length} drafted</span>`:''}${open?' ▲':' ▼'}</div>
+          </div>
+        </div>
+        ${detail}
+      </div>`;
+    }).join('');
+    el.innerHTML = header + cards;
+  }
+
+  // ---- wire up controls (both modes share the filter row) ----
+  const inp=document.getElementById('sqSearch');
+  if(inp){
+    inp.oninput = e=>{ squadSearch=e.target.value; squadOpen=null; const pos=e.target.selectionStart; renderSquads();
+      const ni=document.getElementById('sqSearch'); if(ni){ni.focus(); try{ni.setSelectionRange(pos,pos);}catch(_){};}
+    };
+  }
+  const cs=document.getElementById('sqCountry'); if(cs) cs.onchange = e=>{ squadCountry=e.target.value; squadOpen=null; renderSquads(); };
+  const ps=document.getElementById('sqPosition'); if(ps) ps.onchange = e=>{ squadPosition=e.target.value; squadOpen=null; renderSquads(); };
+  const cl=document.getElementById('sqClear'); if(cl) cl.onclick = ()=>{ squadSearch=''; squadCountry='All'; squadPosition='All'; squadOpen=null; renderSquads(); };
+  el.querySelectorAll('[data-sqt]').forEach(c=>c.onclick=e=>{
+    if(e.target.closest('input,select,button'))return;
+    const t=c.dataset.sqt; squadOpen=(squadOpen===t)?null:t; renderSquads();
+  });
+}
 
 /* boot */
 renderAll();
