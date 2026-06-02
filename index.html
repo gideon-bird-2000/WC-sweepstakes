@@ -545,7 +545,45 @@ function load(){
   try{const r=localStorage.getItem(LS_KEY); if(r){const o=JSON.parse(r); return Object.assign(blankState(),o);} }catch(e){}
   return blankState();
 }
-function save(){ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} renderAll(); }
+
+/* ---------- Cloud-shared state (Netlify Blobs) ---------- */
+let cloudPushTimer=null, cloudLastFingerprint='', cloudOnline=true;
+function fingerprint(){ try{return JSON.stringify(S).length+'|'+JSON.stringify(S).slice(-80);}catch(e){return '';} }
+async function cloudPull(silent){
+  try{
+    const res=await fetch('/.netlify/functions/state',{cache:'no-store'});
+    if(!res.ok) throw new Error('http '+res.status);
+    const data=await res.json();
+    cloudOnline=true;
+    if(data && typeof data==='object'){
+      const incoming=Object.assign(blankState(),data);
+      const incFp=JSON.stringify(incoming).length+'|'+JSON.stringify(incoming).slice(-80);
+      if(incFp!==cloudLastFingerprint && JSON.stringify(incoming)!==JSON.stringify(S)){
+        S=incoming;
+        try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
+        cloudLastFingerprint=incFp;
+        renderAll();
+        if(!silent) toast('Pulled latest from cloud');
+        return true;
+      }
+    }
+  }catch(e){ cloudOnline=false; }
+  return false;
+}
+async function cloudPush(){
+  try{
+    const body=JSON.stringify(S);
+    const res=await fetch('/.netlify/functions/state',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!res.ok) throw new Error('http '+res.status);
+    cloudOnline=true; cloudLastFingerprint=fingerprint();
+    return true;
+  }catch(e){ cloudOnline=false; return false; }
+}
+function schedulePush(){
+  if(cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer=setTimeout(cloudPush,800);
+}
+function save(){ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} schedulePush(); renderAll(); }
 
 /* ============================================================
    SCORING ENGINE
@@ -1073,6 +1111,17 @@ function renderAdmin(){
     ${matchEntry}
 
     <div class="panel">
+      <h2>Live Shared State</h2>
+      <div class="ph-sub">All three of you see the same board — picks and results push to Netlify automatically</div>
+      <div class="note">Your draft and results sync to the cloud every time you make a change. The other two see updates within ~5 seconds. No more exporting JSON around.</div>
+      <div class="io-row">
+        <button class="btn" id="cloudPullBtn">↓ Pull latest now</button>
+        <button class="btn ghost" id="cloudPushBtn">↑ Push my state now</button>
+      </div>
+      <div id="cloudMsg" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+    </div>
+
+    <div class="panel">
       <h2>Auto-sync (optional)</h2>
       <div class="ph-sub">Pull live scores & goalscorers automatically</div>
       <div class="note">A static site can't poll a live football API on its own (CORS + the key would be exposed in the page). Two reliable options:
@@ -1105,6 +1154,8 @@ function renderAdmin(){
   document.getElementById('importBtn').onclick=importJSON;
   document.getElementById('resetBtn').onclick=()=>{ if(confirm("Erase the entire draft and all results? This cannot be undone.")){S=blankState();save();toast("Reset done");}};
   document.getElementById('syncBtn').onclick=trySync;
+  const cpb=document.getElementById('cloudPullBtn'); if(cpb) cpb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pulling…';const ok=await cloudPull();document.getElementById('cloudMsg').innerHTML=ok?'✅ Pulled latest':(cloudOnline?'No newer data found.':'⚠️ Couldn\'t reach cloud — function may not be deployed yet.');};
+  const cphb=document.getElementById('cloudPushBtn'); if(cphb) cphb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pushing…';const ok=await cloudPush();document.getElementById('cloudMsg').innerHTML=ok?'✅ Your state is now shared with Ant & Alex':'⚠️ Push failed — try again in a moment.';};
 }
 
 function admMatch(f){
@@ -1500,6 +1551,8 @@ function renderSquads(){
 
 /* boot */
 renderAll();
+cloudPull(true);
+setInterval(()=>cloudPull(true), 5000);
 </script>
 </body>
 </html>
