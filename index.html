@@ -1119,35 +1119,76 @@ async function trySync(){
     const res=await fetch('/.netlify/functions/wc-results');
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data=await res.json();
-    const applied=applySync(data);
+    const r=applySync(data);
     save();
-    msg.innerHTML=`✅ Synced. Updated <b>${applied}</b> match${applied===1?'':'es'}. Review & adjust goalscorers above if needed.`;
+    const parts=[];
+    if(r.updated>0) parts.push(`<b>${r.updated}</b> match${r.updated===1?'':'es'} updated`);
+    if(r.koFilled>0) parts.push(`<b>${r.koFilled}</b> bracket slot${r.koFilled===1?'':'s'} resolved`);
+    msg.innerHTML = parts.length
+      ? `✅ Synced. ${parts.join(' &middot; ')}. Review goalscorers above if needed.`
+      : `✅ Synced. Connected fine — no new results or bracket changes yet.`;
     toast("Synced from API");
   }catch(e){
     msg.innerHTML=`⚠️ Couldn't reach the serverless function (<code>${e.message}</code>). That's expected if you haven't deployed it yet — log results manually above, or see the README to enable auto-sync.`;
   }
 }
-// data = array of {home,away,homeScore,awayScore,finished,scorers:[{name,team,count}]}
+// data = array of {home,away,homeScore,awayScore,finished,stage,date,penWinner,scorers:[{name,team,count}]}
+// Returns {updated:N, koFilled:N}
 function applySync(data){
-  if(!Array.isArray(data)) return 0;
+  if(!Array.isArray(data)) return {updated:0,koFilled:0};
   const norm=s=>(s||'').toLowerCase().replace(/[^a-z]/g,'');
-  let n=0;
+
+  // Map API's stage labels to our local stage names
+  const STAGE_MAP={
+    'round of 32':'Round of 32',
+    'round of 16':'Round of 16',
+    'quarter-finals':'Quarter-final','quarter-final':'Quarter-final','quarter finals':'Quarter-final',
+    'semi-finals':'Semi-final','semi-final':'Semi-final','semi finals':'Semi-final',
+    'final':'Final',
+    '3rd-place final':'Third place','3rd place final':'Third place','third place':'Third place','play-off for third place':'Third place'
+  };
+  const toLocalStage=s=>STAGE_MAP[(s||'').toLowerCase().trim()]||null;
+
+  // ----- 1) Bracket resolution: fill TBD knockout slots -----
+  const apiByStage={};
   data.forEach(m=>{
-    if(!m.finished || m.homeScore==null) return;
-    // match a fixture by team names (group or KO)
+    const stage=toLocalStage(m.stage);
+    if(!stage)return;
+    (apiByStage[stage]=apiByStage[stage]||[]).push(m);
+  });
+  let koFilled=0;
+  Object.keys(apiByStage).forEach(stage=>{
+    const apiList=apiByStage[stage].slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const localList=FIXTURES.filter(f=>f.ko&&f.stage===stage)
+      .sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:0)||(a.id-b.id));
+    apiList.forEach((m,i)=>{
+      const local=localList[i];
+      if(!local)return;
+      const r=S.results[local.id]=S.results[local.id]||{};
+      if(!r.koHome&&!r.koAway){
+        r.koHome=m.home;
+        r.koAway=m.away;
+        koFilled++;
+      }
+    });
+  });
+
+  // ----- 2) Finished match results -----
+  let updated=0;
+  data.forEach(m=>{
+    if(!m.finished||m.homeScore==null)return;
     const fx=FIXTURES.find(f=>{
       const {home,away}=fxTeams(f);
-      return (norm(home)===norm(m.home)&&norm(away)===norm(m.away)) ||
+      return (norm(home)===norm(m.home)&&norm(away)===norm(m.away))||
              (norm(home)===norm(m.away)&&norm(away)===norm(m.home));
     });
-    if(!fx) return;
+    if(!fx)return;
     const {home}=fxTeams(fx);
-    const swap = norm(home)!==norm(m.home);
+    const swap=norm(home)!==norm(m.home);
     const r=S.results[fx.id]=S.results[fx.id]||{goals:{}};
-    r.hs = swap? m.awayScore : m.homeScore;
-    r.as = swap? m.homeScore : m.awayScore;
-    r.winner = r.hs>r.as?'home':r.as>r.hs?'away':(m.penWinner? (norm(m.penWinner)===norm(fxTeams(fx).home)?'home':'away'):'draw');
-    // match scorers to drafted players by fuzzy name
+    r.hs=swap?m.awayScore:m.homeScore;
+    r.as=swap?m.homeScore:m.awayScore;
+    r.winner=r.hs>r.as?'home':r.as>r.hs?'away':(m.penWinner?(norm(m.penWinner)===norm(fxTeams(fx).home)?'home':'away'):'draw');
     if(Array.isArray(m.scorers)){
       r.goals=r.goals||{};
       m.scorers.forEach(sc=>{
@@ -1155,9 +1196,9 @@ function applySync(data){
         if(p) r.goals[p.id]=sc.count||1;
       });
     }
-    n++;
+    updated++;
   });
-  return n;
+  return {updated,koFilled};
 }
 
 /* ---------------- helpers ---------------- */
