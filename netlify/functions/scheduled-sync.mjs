@@ -89,6 +89,45 @@ function norm(s){
     .replace(/[^a-z]/g,"");
   return ALIASES[base] || base;
 }
+const STOP_TOKENS = new Set(['jr','jnr','snr','iii','junior','senior']);
+function tokenize(n){
+  return (n||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z\s\-.]/g,' ')
+    .split(/[\s\-.]+/)
+    .filter(t => t && !STOP_TOKENS.has(t));
+}
+function namesMatch(a, b){
+  const na = norm(a), nb = norm(b);
+  if(!na || !nb) return false;
+  if(na === nb) return true;
+  if(na.length >= 4 && nb.includes(na)) return true;
+  if(nb.length >= 4 && na.includes(nb)) return true;
+  const ta = tokenize(a), tb = tokenize(b);
+  if(!ta.length || !tb.length) return false;
+  const meanA = ta.filter(t => t.length >= 2);
+  const meanB = tb.filter(t => t.length >= 2);
+  if(!meanA.length || !meanB.length) return false;
+  const tokenOK = (t1, t2) =>
+    t1 === t2 || (t1.length >= 4 && t2.length >= 4 && (t1.startsWith(t2) || t2.startsWith(t1)));
+  const shorter = meanA.length <= meanB.length ? meanA : meanB;
+  const longer  = meanA.length <= meanB.length ? meanB : meanA;
+  if(shorter.length >= 2 && shorter.every(t1 => longer.some(t2 => tokenOK(t1, t2)))) return true;
+  let mt = null;
+  for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1, t2)){mt=t1; break;} } if(mt) break; }
+  if(!mt) return false;
+  const sA = meanA[meanA.length-1], sB = meanB[meanB.length-1];
+  const isSurname = mt===sA || mt===sB ||
+    (mt.length >= 4 && sA.length >= 4 && (mt.startsWith(sA) || sA.startsWith(mt))) ||
+    (mt.length >= 4 && sB.length >= 4 && (mt.startsWith(sB) || sB.startsWith(mt)));
+  if(!isSurname) return false;
+  const fA = (ta[0] === mt && ta.length > 1) ? ta[1] : ta[0];
+  const fB = (tb[0] === mt && tb.length > 1) ? tb[1] : tb[0];
+  if(fA && fB && fA !== mt && fB !== mt){
+    if(fA[0] !== fB[0]) return false;
+  }
+  return true;
+}
 function fxTeams(f, state){
   const r = state.results[f.id] || {};
   return {
@@ -163,10 +202,7 @@ function applySync(data, state, FIXTURES){
     if(Array.isArray(m.scorers)){
       r.goals = r.goals || {};
       m.scorers.forEach(sc => {
-        const p = state.players.find(pl =>
-          norm(pl.name).includes(norm(sc.name).slice(0,8)) ||
-          norm(sc.name).includes(norm(pl.name).slice(0,8))
-        );
+        const p = state.players.find(pl => namesMatch(pl.name, sc.name));
         if(p) r.goals[p.id] = sc.count || 1;
       });
     }
