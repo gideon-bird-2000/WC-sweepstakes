@@ -1323,6 +1323,46 @@ function applySync(data){
     return ALIASES[base]||base;
   };
 
+  // Smart name matcher for goalscorers: handles "Vini Jr"↔"Vinícius Júnior",
+  // "H. Kane"↔"Harry Kane", "Son"↔"Heung-min Son" (surname-first order too).
+  // Avoids false positives on shared first names or shared surnames.
+  const STOP_TOKENS=new Set(['jr','jnr','snr','iii','junior','senior']);
+  const tokenize=n=>(n||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z\s\-.]/g,' ')
+    .split(/[\s\-.]+/)
+    .filter(t=>t && !STOP_TOKENS.has(t));
+  const namesMatch=(a,b)=>{
+    const na=norm(a), nb=norm(b);
+    if(!na||!nb) return false;
+    if(na===nb) return true;
+    if(na.length>=4 && nb.includes(na)) return true;
+    if(nb.length>=4 && na.includes(nb)) return true;
+    const ta=tokenize(a), tb=tokenize(b);
+    if(!ta.length||!tb.length) return false;
+    const meanA=ta.filter(t=>t.length>=2), meanB=tb.filter(t=>t.length>=2);
+    if(!meanA.length||!meanB.length) return false;
+    const tokenOK=(t1,t2)=> t1===t2 || (t1.length>=4 && t2.length>=4 && (t1.startsWith(t2)||t2.startsWith(t1)));
+    // Strong: all tokens of shorter name appear in longer (handles reorder, dropped middle names)
+    const shorter = meanA.length<=meanB.length?meanA:meanB;
+    const longer  = meanA.length<=meanB.length?meanB:meanA;
+    if(shorter.length>=2 && shorter.every(t1=>longer.some(t2=>tokenOK(t1,t2)))) return true;
+    // Single-token surname match with first-initial validation
+    let mt=null;
+    for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1,t2)){mt=t1;break;} } if(mt)break; }
+    if(!mt) return false;
+    const sA=meanA[meanA.length-1], sB=meanB[meanB.length-1];
+    const isSurname = mt===sA||mt===sB ||
+      (mt.length>=4 && sA.length>=4 && (mt.startsWith(sA)||sA.startsWith(mt))) ||
+      (mt.length>=4 && sB.length>=4 && (mt.startsWith(sB)||sB.startsWith(mt)));
+    if(!isSurname) return false;
+    // Korean surname-first: if matched is at position 0, use next token for first-initial signal
+    const fA=(ta[0]===mt && ta.length>1)?ta[1]:ta[0];
+    const fB=(tb[0]===mt && tb.length>1)?tb[1]:tb[0];
+    if(fA && fB && fA!==mt && fB!==mt){ if(fA[0]!==fB[0]) return false; }
+    return true;
+  };
+
   // Map API's stage labels to our local stage names
   const STAGE_MAP={
     'round of 32':'Round of 32',
@@ -1397,7 +1437,7 @@ function applySync(data){
     if(Array.isArray(m.scorers)){
       r.goals=r.goals||{};
       m.scorers.forEach(sc=>{
-        const p=S.players.find(pl=>norm(pl.name).includes(norm(sc.name).slice(0,8))||norm(sc.name).includes(norm(pl.name).slice(0,8)));
+        const p=S.players.find(pl=>namesMatch(pl.name, sc.name));
         if(p) r.goals[p.id]=sc.count||1;
       });
     }
