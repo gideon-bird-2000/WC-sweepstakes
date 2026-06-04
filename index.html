@@ -1150,6 +1150,15 @@ function renderAdmin(){
     </div>
 
     <div class="panel">
+      <h2>Name Matcher Test</h2>
+      <div class="ph-sub">Check how a goalscorer name from the API would match against your drafted players</div>
+      <div class="note">Type the name as the API might return it (e.g. "M. Salah", "Vini Jr", "Son", "Haaland"). The tool runs the same matching logic that auto-sync uses and shows you which drafted player — if any — would get credit.</div>
+      <input id="nameTest" placeholder="e.g. Mbappe, H. Kane, Son Heung-Min, Vini Jr…" style="width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:11px 14px;font-family:inherit;font-size:14px;margin:8px 0">
+      <button class="btn" id="nameTestBtn">Test match</button>
+      <div id="nameTestResult" style="font-size:13px;color:var(--muted);margin-top:12px"></div>
+    </div>
+
+    <div class="panel">
       <h2>Back up & Share</h2>
       <div class="ph-sub">Everything lives in this browser — export to move it between devices or share with Ant & Alex</div>
       <div class="io-row">
@@ -1168,6 +1177,23 @@ function renderAdmin(){
   document.getElementById('syncBtn').onclick=trySync;
   const cpb=document.getElementById('cloudPullBtn'); if(cpb) cpb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pulling…';const ok=await cloudPull();document.getElementById('cloudMsg').innerHTML=ok?'✅ Pulled latest':(cloudOnline?'No newer data found.':'⚠️ Couldn\'t reach cloud — function may not be deployed yet.');};
   const cphb=document.getElementById('cloudPushBtn'); if(cphb) cphb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pushing…';const ok=await cloudPush();document.getElementById('cloudMsg').innerHTML=ok?'✅ Your state is now shared with Ant & Alex':'⚠️ Push failed — try again in a moment.';};
+  const ntb=document.getElementById('nameTestBtn');
+  if(ntb) ntb.onclick=()=>{
+    const q=(document.getElementById('nameTest').value||'').trim();
+    const out=document.getElementById('nameTestResult');
+    if(!q){ out.innerHTML='<span style="color:var(--dim)">Type a name above first.</span>'; return; }
+    if(!S.players||!S.players.length){ out.innerHTML='<span style="color:var(--dim)">No drafted players yet.</span>'; return; }
+    const hits=S.players.filter(pl=>namesMatch(pl.name, q));
+    if(hits.length===0){
+      out.innerHTML=`<span style="color:var(--orange)">✗ "${q}" would <b>not</b> match any drafted player.</span> If this name should match someone, you'd need to log their goals manually in Result Logging.`;
+    } else if(hits.length===1){
+      const p=hits[0];
+      out.innerHTML=`<span style="color:var(--lime)">✓ "${q}" matches <b>${p.name}</b></span> (${p.team}, drafted by <b style="color:${CRAW[p.owner]}">${p.owner}</b>)`;
+    } else {
+      const lines=hits.map(p=>`• <b>${p.name}</b> (${p.team}, ${p.owner})`).join('<br>');
+      out.innerHTML=`<span style="color:var(--orange)">⚠ "${q}" matches <b>${hits.length}</b> drafted players — ambiguous:</span><br>${lines}<br><span style="font-size:11px;color:var(--dim)">In a live sync, the first match would get the goal credit.</span>`;
+    }
+  };
 }
 
 function admMatch(f){
@@ -1302,6 +1328,50 @@ async function trySync(){
 }
 // data = array of {home,away,homeScore,awayScore,finished,stage,date,penWinner,scorers:[{name,team,count}]}
 // Returns {updated:N, koFilled:N, timesUpdated:N}
+/* Smart player-name matcher used by sync + test tool. Handles "Vini Jr"↔"Vinícius Júnior",
+   "H. Kane"↔"Harry Kane", "Son"↔"Heung-min Son" (surname-first order too), with
+   guards against false positives like sharing first names or surnames. */
+const NAME_STOP_TOKENS = new Set(['jr','jnr','snr','iii','junior','senior']);
+function nameNorm(s){
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z]/g,'');
+}
+function nameTokens(n){
+  return (n||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z\s\-.]/g,' ')
+    .split(/[\s\-.]+/)
+    .filter(t=>t && !NAME_STOP_TOKENS.has(t));
+}
+function namesMatch(a,b){
+  const na=nameNorm(a), nb=nameNorm(b);
+  if(!na||!nb) return false;
+  if(na===nb) return true;
+  if(na.length>=4 && nb.includes(na)) return true;
+  if(nb.length>=4 && na.includes(nb)) return true;
+  const ta=nameTokens(a), tb=nameTokens(b);
+  if(!ta.length||!tb.length) return false;
+  const meanA=ta.filter(t=>t.length>=2), meanB=tb.filter(t=>t.length>=2);
+  if(!meanA.length||!meanB.length) return false;
+  const tokenOK=(t1,t2)=> t1===t2 || (t1.length>=4 && t2.length>=4 && (t1.startsWith(t2)||t2.startsWith(t1)));
+  const shorter = meanA.length<=meanB.length?meanA:meanB;
+  const longer  = meanA.length<=meanB.length?meanB:meanA;
+  if(shorter.length>=2 && shorter.every(t1=>longer.some(t2=>tokenOK(t1,t2)))) return true;
+  let mt=null;
+  for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1,t2)){mt=t1;break;} } if(mt)break; }
+  if(!mt) return false;
+  const sA=meanA[meanA.length-1], sB=meanB[meanB.length-1];
+  const isSurname = mt===sA||mt===sB ||
+    (mt.length>=4 && sA.length>=4 && (mt.startsWith(sA)||sA.startsWith(mt))) ||
+    (mt.length>=4 && sB.length>=4 && (mt.startsWith(sB)||sB.startsWith(mt)));
+  if(!isSurname) return false;
+  const fA=(ta[0]===mt && ta.length>1)?ta[1]:ta[0];
+  const fB=(tb[0]===mt && tb.length>1)?tb[1]:tb[0];
+  if(fA && fB && fA!==mt && fB!==mt){ if(fA[0]!==fB[0]) return false; }
+  return true;
+}
+
 function applySync(data){
   if(!Array.isArray(data)) return {updated:0,koFilled:0,timesUpdated:0};
   // Alias map: API-Football names → local team names. Keys & values are normalized (lowercase, accent-stripped, letters only).
@@ -1321,46 +1391,6 @@ function applySync(data){
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // strip accents
       .replace(/[^a-z]/g,'');
     return ALIASES[base]||base;
-  };
-
-  // Smart name matcher for goalscorers: handles "Vini Jr"↔"Vinícius Júnior",
-  // "H. Kane"↔"Harry Kane", "Son"↔"Heung-min Son" (surname-first order too).
-  // Avoids false positives on shared first names or shared surnames.
-  const STOP_TOKENS=new Set(['jr','jnr','snr','iii','junior','senior']);
-  const tokenize=n=>(n||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z\s\-.]/g,' ')
-    .split(/[\s\-.]+/)
-    .filter(t=>t && !STOP_TOKENS.has(t));
-  const namesMatch=(a,b)=>{
-    const na=norm(a), nb=norm(b);
-    if(!na||!nb) return false;
-    if(na===nb) return true;
-    if(na.length>=4 && nb.includes(na)) return true;
-    if(nb.length>=4 && na.includes(nb)) return true;
-    const ta=tokenize(a), tb=tokenize(b);
-    if(!ta.length||!tb.length) return false;
-    const meanA=ta.filter(t=>t.length>=2), meanB=tb.filter(t=>t.length>=2);
-    if(!meanA.length||!meanB.length) return false;
-    const tokenOK=(t1,t2)=> t1===t2 || (t1.length>=4 && t2.length>=4 && (t1.startsWith(t2)||t2.startsWith(t1)));
-    // Strong: all tokens of shorter name appear in longer (handles reorder, dropped middle names)
-    const shorter = meanA.length<=meanB.length?meanA:meanB;
-    const longer  = meanA.length<=meanB.length?meanB:meanA;
-    if(shorter.length>=2 && shorter.every(t1=>longer.some(t2=>tokenOK(t1,t2)))) return true;
-    // Single-token surname match with first-initial validation
-    let mt=null;
-    for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1,t2)){mt=t1;break;} } if(mt)break; }
-    if(!mt) return false;
-    const sA=meanA[meanA.length-1], sB=meanB[meanB.length-1];
-    const isSurname = mt===sA||mt===sB ||
-      (mt.length>=4 && sA.length>=4 && (mt.startsWith(sA)||sA.startsWith(mt))) ||
-      (mt.length>=4 && sB.length>=4 && (mt.startsWith(sB)||sB.startsWith(mt)));
-    if(!isSurname) return false;
-    // Korean surname-first: if matched is at position 0, use next token for first-initial signal
-    const fA=(ta[0]===mt && ta.length>1)?ta[1]:ta[0];
-    const fB=(tb[0]===mt && tb.length>1)?tb[1]:tb[0];
-    if(fA && fB && fA!==mt && fB!==mt){ if(fA[0]!==fB[0]) return false; }
-    return true;
   };
 
   // Map API's stage labels to our local stage names
