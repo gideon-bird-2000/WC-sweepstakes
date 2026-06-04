@@ -250,6 +250,7 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
     <button class="tab" data-view="players">Players &amp; Teams</button>
     <button class="tab" data-view="squads">Squads</button>
     <button class="tab" data-view="draft">Draft Room</button>
+    <button class="tab" data-view="results">Result Logging</button>
     <button class="tab" data-view="admin">Update / Settings</button>
   </div>
 </nav>
@@ -270,6 +271,9 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
 
   <!-- DRAFT -->
   <section class="view" id="draft"></section>
+
+  <!-- RESULT LOGGING -->
+  <section class="view" id="results"></section>
 
   <!-- ADMIN -->
   <section class="view" id="admin"></section>
@@ -663,7 +667,7 @@ function pointsSeries(){
    RENDER — scoreboard + dispatch
    ============================================================ */
 function renderAll(){
-  renderScoreboard(); renderDashboard(); renderFixtures(); renderPlayers(); renderSquads(); renderDraft(); renderAdmin();
+  renderScoreboard(); renderDashboard(); renderFixtures(); renderPlayers(); renderSquads(); renderDraft(); renderResults(); renderAdmin();
 }
 function renderScoreboard(){
   const ranked=[...COMPETITORS].map(c=>({c,...totals(c)})).sort((a,b)=>b.points-a.points);
@@ -1079,36 +1083,47 @@ function wirePlayerDraft(){
 }
 
 /* ---------------- ADMIN / UPDATE ---------------- */
+/* ---------------- RESULT LOGGING ---------------- */
 let admFilter="upcoming";
+function renderResults(){
+  const el=document.getElementById('results');
+  if(!S.teamDraftDone){
+    el.innerHTML=`
+      <p class="eyebrow">Scorekeeping</p>
+      <h1 class="page-h">Result <span class="accent">Logging</span></h1>
+      <div class="note">Finish the draft before logging results.</div>`;
+    return;
+  }
+  let list=FIXTURES.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:a.id-b.id));
+  if(admFilter==='played') list=list.filter(isPlayed);
+  else if(admFilter==='upcoming') list=list.filter(f=>!isPlayed(f));
+  else if(admFilter==='mine') list=list.filter(f=>{const {home,away}=fxTeams(f);return teamOwner(home)||teamOwner(away);});
+  list=list.slice(0,60);
+
+  el.innerHTML=`
+    <p class="eyebrow">Scorekeeping</p>
+    <h1 class="page-h">Result <span class="accent">Logging</span></h1>
+    <p class="page-sub">Manual entry / override. Auto-sync fills these in too — use this when you want to log faster than the hourly sync, or to correct something the API got wrong.</p>
+    <div class="panel">
+      <h2>Log a Result</h2>
+      <div class="ph-sub">Enter the score · winner auto-detected · add goals for any drafted player in the match</div>
+      <div class="seg" style="margin:0 0 16px 0">
+        ${[['upcoming','To play'],['played','Played'],['mine','Mine'],['all','All']].map(([k,l])=>`<button class="${admFilter===k?'on':''}" data-adm="${l==='All'?'all':k}">${l}</button>`).join('')}
+      </div>
+      ${list.map(admMatch).join('') || '<div class="note">Nothing here.</div>'}
+    </div>`;
+
+  el.querySelectorAll('[data-adm]').forEach(b=>b.onclick=()=>{admFilter=b.dataset.adm;renderResults();});
+  el.querySelectorAll('.adm-match').forEach(wireAdmMatch);
+}
+
 function renderAdmin(){
   const el=document.getElementById('admin');
 
-  let matchEntry='';
-  if(S.teamDraftDone){
-    let list=FIXTURES.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:a.id-b.id));
-    if(admFilter==='played') list=list.filter(isPlayed);
-    else if(admFilter==='upcoming') list=list.filter(f=>!isPlayed(f));
-    else if(admFilter==='mine') list=list.filter(f=>{const {home,away}=fxTeams(f);return teamOwner(home)||teamOwner(away);});
-    list=list.slice(0,60);
-    matchEntry=`
-      <div class="panel">
-        <h2>Log a Result</h2>
-        <div class="ph-sub">Enter the score · winner auto-detected · add goals for any drafted player in the match</div>
-        <div class="seg" style="margin:0 0 16px 0">
-          ${[['upcoming','To play'],['played','Played'],['mine','Mine'],['all','All']].map(([k,l])=>`<button class="${admFilter===k?'on':''}" data-adm="${l==='All'?'all':k}">${l}</button>`).join('')}
-        </div>
-        ${list.map(admMatch).join('') || '<div class="note">Nothing here.</div>'}
-      </div>`;
-  } else {
-    matchEntry=`<div class="note">Finish the draft before logging results.</div>`;
-  }
-
   el.innerHTML=`
-    <p class="eyebrow">Scorekeeping & data</p>
+    <p class="eyebrow">Settings & data</p>
     <h1 class="page-h">Update / <span class="accent">Settings</span></h1>
-    <p class="page-sub">This is where Gideon (or whoever's keeping score) logs results during the tournament.</p>
-
-    ${matchEntry}
+    <p class="page-sub">Cloud sharing, auto-sync, and backup/restore. To log match results, use the <b>Result Logging</b> tab.</p>
 
     <div class="panel">
       <h2>Live Shared State</h2>
@@ -1125,7 +1140,7 @@ function renderAdmin(){
       <h2>Auto-sync (optional)</h2>
       <div class="ph-sub">Pull live scores & goalscorers automatically</div>
       <div class="note">A static site can't poll a live football API on its own (CORS + the key would be exposed in the page). Two reliable options:
-        <br>• <b>Easiest:</b> log results above as matches finish — it takes a few seconds per game.
+        <br>• <b>Easiest:</b> log results in the <b>Result Logging</b> tab as matches finish.
         <br>• <b>Fully automatic:</b> deploy the included <b>netlify/functions/wc-results.js</b> with a free API-Football key, then hit Sync. See the README.
       </div>
       <div class="io-row">
@@ -1145,9 +1160,6 @@ function renderAdmin(){
       </div>
       <textarea class="io" id="ioBox" placeholder="Paste exported JSON here, then press Import…"></textarea>
     </div>`;
-
-  el.querySelectorAll('[data-adm]').forEach(b=>b.onclick=()=>{admFilter=b.dataset.adm;renderAdmin();});
-  el.querySelectorAll('.adm-match').forEach(wireAdmMatch);
 
   document.getElementById('exportBtn').onclick=exportJSON;
   document.getElementById('copyBtn').onclick=()=>{navigator.clipboard.writeText(JSON.stringify(S)).then(()=>toast("Copied to clipboard"));};
@@ -1553,6 +1565,30 @@ function renderSquads(){
 renderAll();
 cloudPull(true);
 setInterval(()=>cloudPull(true), 5000);
+
+/* ---------- hourly auto-sync (API → state → cloud) ---------- */
+let lastAutoSync=null;
+async function autoSync(){
+  try{
+    const res=await fetch('/.netlify/functions/wc-results');
+    if(!res.ok) return;
+    const data=await res.json();
+    if(!Array.isArray(data)) return;
+    const r=applySync(data);
+    lastAutoSync=new Date();
+    if(r.updated>0||r.koFilled>0||r.timesUpdated>0){
+      save();   // persists locally + schedules cloud push (others auto-pull within 5s)
+      const bits=[];
+      if(r.updated>0) bits.push(`${r.updated} match${r.updated===1?'':'es'}`);
+      if(r.koFilled>0) bits.push(`${r.koFilled} bracket`);
+      if(r.timesUpdated>0) bits.push(`${r.timesUpdated} time${r.timesUpdated===1?'':'s'}`);
+      toast(`Auto-synced: ${bits.join(', ')}`);
+    }
+  }catch(e){ /* silent */ }
+}
+// first run shortly after load, then every hour
+setTimeout(autoSync, 30 * 1000);
+setInterval(autoSync, 60 * 60 * 1000);
 </script>
 </body>
 </html>
