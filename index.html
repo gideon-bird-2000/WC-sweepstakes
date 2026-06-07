@@ -578,10 +578,14 @@ async function cloudPush(){
   try{
     const body=JSON.stringify(S);
     const res=await fetch('/.netlify/functions/state',{method:'POST',headers:{'Content-Type':'application/json'},body});
-    if(!res.ok) throw new Error('http '+res.status);
+    if(!res.ok){
+      let detail='';
+      try{ const j=await res.json(); detail=j.error||JSON.stringify(j); }catch(_){ detail='HTTP '+res.status; }
+      throw new Error(detail);
+    }
     cloudOnline=true; cloudLastFingerprint=fingerprint();
     return true;
-  }catch(e){ cloudOnline=false; return false; }
+  }catch(e){ cloudOnline=false; window._lastCloudPushError=e.message; return false; }
 }
 function schedulePush(){
   if(cloudPushTimer) clearTimeout(cloudPushTimer);
@@ -1176,7 +1180,7 @@ function renderAdmin(){
   document.getElementById('resetBtn').onclick=()=>{ if(confirm("Erase the entire draft and all results? This cannot be undone.")){S=blankState();save();toast("Reset done");}};
   document.getElementById('syncBtn').onclick=trySync;
   const cpb=document.getElementById('cloudPullBtn'); if(cpb) cpb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pulling…';const ok=await cloudPull();document.getElementById('cloudMsg').innerHTML=ok?'✅ Pulled latest':(cloudOnline?'No newer data found.':'⚠️ Couldn\'t reach cloud — function may not be deployed yet.');};
-  const cphb=document.getElementById('cloudPushBtn'); if(cphb) cphb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pushing…';const ok=await cloudPush();document.getElementById('cloudMsg').innerHTML=ok?'✅ Your state is now shared with Ant & Alex':'⚠️ Push failed — try again in a moment.';};
+  const cphb=document.getElementById('cloudPushBtn'); if(cphb) cphb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pushing…';const ok=await cloudPush();document.getElementById('cloudMsg').innerHTML=ok?'✅ Your state is now shared with Ant & Alex':('⚠️ Push failed: <code>'+(window._lastCloudPushError||'unknown')+'</code>');};
   const ntb=document.getElementById('nameTestBtn');
   if(ntb) ntb.onclick=()=>{
     const q=(document.getElementById('nameTest').value||'').trim();
