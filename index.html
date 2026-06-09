@@ -766,6 +766,28 @@ function fmtKickoff(iso, withDate){
   const ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   return ds+' · '+t;
 }
+function fmtRelative(iso){
+  if(!iso) return 'never';
+  const d=new Date(iso);
+  if(isNaN(d)) return 'unknown';
+  const sec=Math.max(0,(Date.now()-d.getTime())/1000);
+  if(sec<60) return 'just now';
+  if(sec<3600){ const m=Math.floor(sec/60); return m+' min'+(m>1?'s':'')+' ago'; }
+  if(sec<86400){ const h=Math.floor(sec/3600); return h+' hour'+(h>1?'s':'')+' ago'; }
+  const dd=Math.floor(sec/86400); return dd+' day'+(dd>1?'s':'')+' ago';
+}
+function refreshLastSyncDisplay(){
+  const el=document.getElementById('lastSyncStatus');
+  if(!el) return;
+  if(S._lastAutoSync){
+    const d=new Date(S._lastAutoSync);
+    const rel=fmtRelative(S._lastAutoSync);
+    const abs=d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:false});
+    el.innerHTML=`🕐 Last auto-sync: <b style="color:var(--lime)">${rel}</b> <span style="color:var(--dim)">· ${abs}</span>`;
+  } else {
+    el.innerHTML='<span style="color:var(--dim)">⏳ No auto-sync has run yet. Hit the button above, or wait for the next hourly run.</span>';
+  }
+}
 function renderFixtures(){
   const el=document.getElementById('fixtures');
   const groupOpts=['all',...Object.keys(GROUPS),'Knockouts'].map(g=>`<option value="${g}">${g==='all'?'All stages':(g==='Knockouts'?'Knockouts':'Group '+g)}</option>`).join('');
@@ -1150,7 +1172,8 @@ function renderAdmin(){
       <div class="io-row">
         <button class="btn ghost" id="syncBtn">⚡ Try auto-sync from /api results</button>
       </div>
-      <div id="syncMsg" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
+      <div id="lastSyncStatus" style="font-size:12px;margin-top:10px"></div>
+      <div id="syncMsg" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
     </div>
 
     <div class="panel">
@@ -1179,6 +1202,7 @@ function renderAdmin(){
   document.getElementById('importBtn').onclick=importJSON;
   document.getElementById('resetBtn').onclick=()=>{ if(confirm("Erase the entire draft and all results? This cannot be undone.")){S=blankState();save();toast("Reset done");}};
   document.getElementById('syncBtn').onclick=trySync;
+  refreshLastSyncDisplay();
   const cpb=document.getElementById('cloudPullBtn'); if(cpb) cpb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pulling…';const ok=await cloudPull();document.getElementById('cloudMsg').innerHTML=ok?'✅ Pulled latest':(cloudOnline?'No newer data found.':'⚠️ Couldn\'t reach cloud — function may not be deployed yet.');};
   const cphb=document.getElementById('cloudPushBtn'); if(cphb) cphb.onclick=async()=>{document.getElementById('cloudMsg').textContent='Pushing…';const ok=await cloudPush();document.getElementById('cloudMsg').innerHTML=ok?'✅ Your state is now shared with Ant & Alex':('⚠️ Push failed: <code>'+(window._lastCloudPushError||'unknown')+'</code>');};
   const ntb=document.getElementById('nameTestBtn');
@@ -1317,7 +1341,9 @@ async function trySync(){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const data=await res.json();
     const r=applySync(data);
+    S._lastAutoSync=new Date().toISOString();
     save();
+    refreshLastSyncDisplay();
     const parts=[];
     if(r.updated>0) parts.push(`<b>${r.updated}</b> match${r.updated===1?'':'es'} updated`);
     if(r.koFilled>0) parts.push(`<b>${r.koFilled}</b> bracket slot${r.koFilled===1?'':'s'} resolved`);
@@ -1650,8 +1676,10 @@ async function autoSync(){
     if(!Array.isArray(data)) return;
     const r=applySync(data);
     lastAutoSync=new Date();
+    S._lastAutoSync=lastAutoSync.toISOString();
+    save();
+    refreshLastSyncDisplay();
     if(r.updated>0||r.koFilled>0||r.timesUpdated>0){
-      save();   // persists locally + schedules cloud push (others auto-pull within 5s)
       const bits=[];
       if(r.updated>0) bits.push(`${r.updated} match${r.updated===1?'':'es'}`);
       if(r.koFilled>0) bits.push(`${r.koFilled} bracket`);
@@ -1663,6 +1691,8 @@ async function autoSync(){
 // first run shortly after load, then every hour
 setTimeout(autoSync, 30 * 1000);
 setInterval(autoSync, 60 * 60 * 1000);
+// keep the "X minutes ago" text fresh on the open page
+setInterval(refreshLastSyncDisplay, 30 * 1000);
 </script>
 </body>
 </html>
