@@ -229,6 +229,63 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
 .seg button{background:var(--panel-2);border:none;color:var(--muted);padding:7px 13px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px}
 .seg button.on{background:var(--lime);color:#06100c}
+
+/* ===== countdown banner ===== */
+.countdown-banner{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:15px 22px;margin-bottom:20px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  background:linear-gradient(135deg,var(--panel) 0%,rgba(200,255,77,.04) 100%);
+}
+.cd-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;flex:none}
+.cd-match{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-weight:600;flex:1;font-size:14px}
+.cd-vs{color:var(--dim);font-size:11px;font-weight:400}
+.cd-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.cd-time{display:flex;align-items:baseline;gap:2px;margin-left:auto;flex:none}
+.cd-num{font-family:'Anton';font-size:38px;color:var(--lime);line-height:1}
+.cd-unit{font-size:10px;color:var(--dim);letter-spacing:1.5px;text-transform:uppercase;margin-right:4px}
+.cd-kick{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;flex:none}
+.cd-live{font-family:'Anton';font-size:18px;color:#ff4d4d;letter-spacing:1px;animation:cdpulse 1.2s ease-in-out infinite;flex:none}
+.cd-elapsed{font-family:'Anton';font-size:26px;color:var(--muted);margin-left:10px}
+@keyframes cdpulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ===== today matches ===== */
+.today-match{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;
+  padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.today-match:last-child{border-bottom:none}
+.today-team{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.today-team.right{flex-direction:row-reverse;text-align:right}
+.today-score{font-family:'Anton';font-size:20px;text-align:center;min-width:54px;color:var(--muted);flex:none}
+.today-score.done{color:var(--lime)}
+
+/* ===== group standings ===== */
+.grp-outer{display:grid;grid-template-columns:repeat(auto-fill,minmax(276px,1fr));gap:12px;margin-top:12px}
+.grp-box{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:11px;padding:12px 14px}
+.grp-hd{font-family:'Anton';font-size:14px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:9px}
+table.grp-t{width:100%;border-collapse:collapse;font-size:12px}
+table.grp-t th{text-align:left;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);padding:3px 3px 6px;border-bottom:1px solid var(--line)}
+table.grp-t th.c,table.grp-t td.c{text-align:center}
+table.grp-t td{padding:5px 3px;border-bottom:1px solid rgba(255,255,255,.04)}
+table.grp-t tr:last-child td{border-bottom:none}
+table.grp-t tr.qual>td:first-child{border-left:2px solid rgba(200,255,77,.45);padding-left:5px}
+.grp-tname{display:flex;align-items:center;gap:5px;white-space:nowrap}
+
+/* ===== biggest moment ===== */
+.moment-card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);
+  border-radius:var(--radius);padding:13px 20px;margin-bottom:24px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.moment-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--c);font-weight:700;flex:none}
+.moment-match{font-family:'Anton';font-size:19px;flex:1;min-width:0}
+.moment-det{font-size:12px;color:var(--muted);flex:none}
+
+/* ===== confetti ===== */
+#confettiContainer{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:998;overflow:hidden}
+.confetti-piece{position:absolute;top:-14px;animation:confettiFall linear forwards}
+@keyframes confettiFall{
+  0%{transform:translateY(0) rotate(0deg) scaleX(1);opacity:1}
+  60%{opacity:.85}
+  100%{transform:translateY(90vh) rotate(800deg) scaleX(-1);opacity:0}
+}
 </style>
 </head>
 <body>
@@ -284,6 +341,7 @@ textarea.io{width:100%;min-height:120px;background:var(--ink);border:1px solid v
   </div>
 </main>
 
+<div id="confettiContainer"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -708,17 +766,22 @@ function renderDashboard(){
 
   const ps=pointsSeries();
   el.innerHTML=`
+    ${countdownHTML()}
+    ${todayMatchesHTML()}
     <p class="eyebrow">Live standings</p>
     <h1 class="page-h">The <span class="accent">Table</span></h1>
     <p class="page-sub">One point per team win, one point per goal by a drafted player. ${ps.count===0?'No matches played yet — the board lights up on 11 June.':ps.count+' matches counted so far.'}</p>
     <div class="lead-grid">${cards}</div>
+    ${biggestMomentHTML()}
     <div class="panel">
       <h2>Points by Matchday</h2>
       <div class="ph-sub">Cumulative points · every counted match</div>
       <div class="legend">${COMPETITORS.map(c=>`<span><span class="dot" style="background:${CRAW[c]}"></span>${c}</span>`).join('')}</div>
       <div class="chart-box">${lineChart(ps)}</div>
     </div>
+    ${groupStandingsHTML()}
     ${recentPanel()}`;
+  startCountdown();
 }
 function recentPanel(){
   const played=FIXTURES.filter(isPlayed).sort((a,b)=>(a.date<b.date?1:a.date>b.date?-1:b.id-a.id)).slice(0,6);
@@ -1280,7 +1343,9 @@ function wireAdmMatch(node){
     const pl=+b.dataset.pl, step=+b.dataset.step;
     const r=S.results[fid]=S.results[fid]||{goals:{}};
     r.goals=r.goals||{};
-    r.goals[pl]=Math.max(0,(r.goals[pl]||0)+step);
+    const prevG=r.goals[pl]||0;
+    r.goals[pl]=Math.max(0,prevG+step);
+    if(step>0&&r.goals[pl]>prevG){const pp=playerById(pl);if(pp)fireConfetti(CRAW[pp.owner]);}
     document.getElementById(`g_${fid}_${pl}`).textContent=r.goals[pl];
     // don't full re-render (keeps focus); update silently
     try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){}
@@ -1661,8 +1726,181 @@ function renderSquads(){
   });
 }
 
+
+/* ============================================================
+   COUNTDOWN WIDGET
+   ============================================================ */
+let _cdInterval=null;
+function nextUnplayedFx(){
+  const withTime=FIXTURES.filter(f=>!isPlayed(f)&&kickoffOf(f))
+    .sort((a,b)=>new Date(kickoffOf(a))-new Date(kickoffOf(b)));
+  if(withTime.length) return withTime[0];
+  return FIXTURES.filter(f=>!isPlayed(f)).sort((a,b)=>a.id-b.id)[0]||null;
+}
+function countdownHTML(){ return '<div id="cdBanner" class="countdown-banner"></div>'; }
+function updateCountdown(){
+  const el=document.getElementById('cdBanner');
+  if(!el){if(_cdInterval){clearInterval(_cdInterval);_cdInterval=null;}return;}
+  const now=Date.now();
+  const nx=nextUnplayedFx();
+  if(!nx){el.innerHTML='<span class="cd-label">Tournament complete</span>';return;}
+  const iso=kickoffOf(nx);
+  const {home,away}=fxTeams(nx);
+  const owH=teamOwner(home),owA=teamOwner(away);
+  const hDot=owH?`<span class="cd-dot" style="background:${CRAW[owH]}"></span>`:'';
+  const aDot=owA?`<span class="cd-dot" style="background:${CRAW[owA]}"></span>`:'';
+  const matchTxt=`${hDot}${FLAG[home]||'⚽'} ${home} <span class="cd-vs">vs</span> ${aDot}${FLAG[away]||'⚽'} ${away}`;
+  if(!iso){el.innerHTML=`<span class="cd-label">Next up</span><span class="cd-match">${matchTxt}</span>`;return;}
+  const kick=new Date(iso).getTime();
+  const diff=kick-now;
+  if(diff<0&&diff>-115*60*1000){
+    const elapsed=Math.floor(-diff/60000);
+    el.innerHTML=`<span class="cd-live">🔴 LIVE</span><span class="cd-match" style="margin-left:10px">${matchTxt}</span><span class="cd-elapsed">${elapsed}'</span>`;
+    return;
+  }
+  if(diff<=0){el.innerHTML=`<span class="cd-label">Next up</span><span class="cd-match">${matchTxt}</span>`;return;}
+  const sec=Math.floor(diff/1000);
+  const d=Math.floor(sec/86400),h=Math.floor((sec%86400)/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  const pad=n=>String(n).padStart(2,'0');
+  const ks=new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const ds=new Date(iso).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  let tHtml;
+  if(d>0) tHtml=`<span class="cd-num">${d}</span><span class="cd-unit">d</span><span class="cd-num">${pad(h)}</span><span class="cd-unit">h</span><span class="cd-num">${pad(m)}</span><span class="cd-unit">m</span>`;
+  else if(h>0) tHtml=`<span class="cd-num">${pad(h)}</span><span class="cd-unit">h</span><span class="cd-num">${pad(m)}</span><span class="cd-unit">m</span><span class="cd-num">${pad(s)}</span><span class="cd-unit">s</span>`;
+  else tHtml=`<span class="cd-num">${pad(m)}</span><span class="cd-unit">m</span><span class="cd-num">${pad(s)}</span><span class="cd-unit">s</span>`;
+  el.innerHTML=`<span class="cd-label">Next up</span><span class="cd-match">${matchTxt}</span><span class="cd-time">${tHtml}</span><span class="cd-kick">${ds} · ${ks}</span>`;
+}
+function startCountdown(){
+  updateCountdown();
+  if(_cdInterval) return;
+  _cdInterval=setInterval(updateCountdown,1000);
+}
+
+/* ============================================================
+   TODAY'S MATCHES
+   ============================================================ */
+function todayMatchesHTML(){
+  const todayKey=new Date().toLocaleDateString('en-CA');
+  const todays=FIXTURES.filter(f=>{
+    const iso=kickoffOf(f)||(f.date+'T12:00:00Z');
+    return new Date(iso).toLocaleDateString('en-CA')===todayKey;
+  });
+  if(!todays.length) return '';
+  const dateLabel=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  return `<div class="panel" style="margin-bottom:20px">
+    <h2>Today\u2019s Matches</h2>
+    <div class="ph-sub">${dateLabel}</div>
+    ${todays.map(f=>{
+      const {home,away}=fxTeams(f);
+      const r=S.results[f.id];
+      const played=isPlayed(f);
+      const iso=kickoffOf(f);
+      const owH=teamOwner(home),owA=teamOwner(away);
+      const ks=iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}):'';
+      return `<div class="today-match">
+        <div class="today-team" style="${owH?'color:'+CRAW[owH]:''}">${FLAG[home]||'⚽'} ${home}</div>
+        <div class="today-score${played?' done':''}">${played?`${r.hs}\u2013${r.as}`:(ks||'vs')}</div>
+        <div class="today-team right" style="${owA?'color:'+CRAW[owA]:''}">${FLAG[away]||'⚽'} ${away}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ============================================================
+   GROUP STANDINGS
+   ============================================================ */
+function groupStandings(g){
+  const teams=GROUPS[g].map(x=>x[0]);
+  const st={};
+  teams.forEach(t=>{st[t]={P:0,W:0,D:0,L:0,GF:0,GA:0,Pts:0};});
+  FIXTURES.forEach(f=>{
+    if(f.group!==g||!isPlayed(f))return;
+    const r=S.results[f.id];const {home,away}=fxTeams(f);
+    if(!st[home]||!st[away])return;
+    st[home].P++;st[away].P++;
+    st[home].GF+=r.hs;st[home].GA+=r.as;
+    st[away].GF+=r.as;st[away].GA+=r.hs;
+    if(r.winner==='home'){st[home].W++;st[home].Pts+=3;st[away].L++;}
+    else if(r.winner==='away'){st[away].W++;st[away].Pts+=3;st[home].L++;}
+    else{st[home].D++;st[away].D++;st[home].Pts++;st[away].Pts++;}
+  });
+  return teams.map(t=>({t,...st[t],GD:st[t].GF-st[t].GA}))
+    .sort((a,b)=>b.Pts-a.Pts||b.GD-a.GD||b.GF-a.GF||a.t.localeCompare(b.t));
+}
+function groupStandingsHTML(){
+  return `<div class="panel">
+    <h2>Group Standings</h2>
+    <div class="ph-sub">Live tables \u00b7 coloured = your teams \u00b7 green bar = top-2 qualifier spots</div>
+    <div class="grp-outer">
+      ${Object.keys(GROUPS).map(g=>{
+        const rows=groupStandings(g);
+        return `<div class="grp-box">
+          <div class="grp-hd">Group ${g}</div>
+          <table class="grp-t"><thead><tr>
+            <th>Team</th><th class="c">P</th><th class="c">W</th><th class="c">D</th><th class="c">L</th><th class="c">GD</th><th class="c">Pts</th>
+          </tr></thead><tbody>
+          ${rows.map((r,i)=>{
+            const ow=teamOwner(r.t);
+            return `<tr class="${i<2?'qual':''}">
+              <td><div class="grp-tname"><span>${FLAG[r.t]||''}</span><span style="${ow?'color:'+CRAW[ow]+';font-weight:700':''}">${r.t}</span>${ow?`<span style="width:5px;height:5px;border-radius:50%;background:${CRAW[ow]};flex:none"></span>`:''}</div></td>
+              <td class="c">${r.P}</td><td class="c">${r.W}</td><td class="c">${r.D}</td><td class="c">${r.L}</td>
+              <td class="c">${r.GD>0?'+'+r.GD:r.GD}</td>
+              <td class="c" style="font-weight:700;${ow?'color:'+CRAW[ow]:''}">${r.Pts}</td>
+            </tr>`;
+          }).join('')}
+          </tbody></table>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   BIGGEST MOMENT
+   ============================================================ */
+function biggestMomentHTML(){
+  let best=null,bestDelta=0,bestOwner=null;
+  FIXTURES.forEach(f=>{
+    if(!isPlayed(f))return;
+    COMPETITORS.forEach(c=>{
+      const d=fxDelta(f,c);
+      const tot=d.win+d.goals;
+      if(tot>bestDelta){bestDelta=tot;best=f;bestOwner=c;}
+    });
+  });
+  if(!best||bestDelta===0) return '';
+  const {home,away}=fxTeams(best);
+  const r=S.results[best.id];
+  const d=fxDelta(best,bestOwner);
+  const parts=[];
+  if(d.win) parts.push('team win');
+  if(d.goals) parts.push(`${d.goals} goal${d.goals>1?'s':''}`);
+  return `<div class="moment-card" style="--c:${CRAW[bestOwner]}">
+    <span class="moment-lbl">\u26a1 Best match</span>
+    <span class="moment-match">${FLAG[home]||'\u26bd'} ${home} ${r.hs}\u2013${r.as} ${FLAG[away]||'\u26bd'} ${away}</span>
+    <span class="moment-det">+${bestDelta} pts for <b style="color:${CRAW[bestOwner]}">${bestOwner}</b> \u00b7 ${parts.join(' + ')}</span>
+  </div>`;
+}
+
+/* ============================================================
+   CONFETTI
+   ============================================================ */
+function fireConfetti(color){
+  const c=document.getElementById('confettiContainer');
+  if(!c) return;
+  for(let i=0;i<38;i++){
+    const p=document.createElement('div');
+    p.className='confetti-piece';
+    const sz=7+Math.random()*9;
+    p.style.cssText=`left:${10+Math.random()*80}vw;background:${color};width:${sz}px;height:${sz}px;border-radius:${Math.random()>.45?'50%':'3px'};animation-delay:${Math.random()*.3}s;animation-duration:${.65+Math.random()*.95}s;`;
+    c.appendChild(p);
+    p.addEventListener('animationend',()=>p.remove());
+  }
+}
+
 /* boot */
 renderAll();
+startCountdown();
 cloudPull(true);
 setInterval(()=>cloudPull(true), 5000);
 
