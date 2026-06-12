@@ -1,91 +1,80 @@
 // netlify/functions/wc-results.js
-// Auto-sync for The Group of Three sweepstakes.
+// Fetches World Cup 2026 results from football-data.org (free tier).
 //
-// Returns the World Cup 2026 fixtures with:
-//   - team names (filtered to real teams; "Winner Match X" placeholders excluded)
-//   - scores + winner if finished
-//   - goalscorers for recently finished matches (capped to protect the free quota)
-//   - stage info so the app can auto-resolve the knockout bracket
-//
-// SETUP: env var APIFOOTBALL_KEY = your free key from api-football.com
+// SETUP:
+//   1. Register free at https://www.football-data.org/client/register
+//   2. Copy your API token from your account dashboard
+//   3. In Netlify: Project configuration → Environment variables → Add FOOTBALL_DATA_KEY
+//   (You can delete the old APIFOOTBALL_KEY — it's no longer used)
 
-const API_BASE = "https://v3.football.api-sports.io";
-const LEAGUE = 1;
-const SEASON = 2026;
-const MAX_EVENT_CALLS = 25;
-const FINISHED = ["FT", "AET", "PEN"];
+const API_BASE   = "https://api.football-data.org/v4";
+const COMPETITION = "WC"; // FIFA World Cup
+
+// Map football-data.org stage strings to labels our applySync understands
+const STAGE_LABELS = {
+  GROUP_STAGE:    "Group Stage",
+  ROUND_OF_32:    "Round of 32",
+  LAST_16:        "Round of 16",
+  ROUND_OF_16:    "Round of 16",
+  QUARTER_FINALS: "Quarter-finals",
+  SEMI_FINALS:    "Semi-finals",
+  THIRD_PLACE:    "Third place",
+  FINAL:          "Final",
+};
 
 exports.handler = async function () {
-  const key = process.env.APIFOOTBALL_KEY;
-  if (!key) return json(500, { error: "APIFOOTBALL_KEY env var not set. See README." });
-  const headers = { "x-apisports-key": key };
+  const key = process.env.FOOTBALL_DATA_KEY;
+  if (!key) {
+    return json(500, { error: "FOOTBALL_DATA_KEY env var not set. Register free at football-data.org." });
+  }
 
   try {
-    const fxRes = await fetch(`${API_BASE}/fixtures?league=${LEAGUE}&season=${SEASON}`, { headers });
-    const fxData = await fxRes.json();
-    const fixtures = fxData.response || [];
-
-    // Only keep matches with real team names on both sides
-    const isReal = (n) => {
-      if (!n) return false;
-      const l = n.toLowerCase();
-      return !l.includes("winner ") && !l.includes("loser ") &&
-             !l.startsWith("group ") && !l.includes("runner") && l !== "tbd";
-    };
-    const relevant = fixtures.filter((f) => isReal(f.teams?.home?.name) && isReal(f.teams?.away?.name));
-
-    // Fetch goalscorer events for recently finished matches only
-    const finished = relevant.filter((f) => FINISHED.includes(f.fixture.status.short));
-    const recent = [...finished]
-      .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-      .slice(0, MAX_EVENT_CALLS);
-
-    const scorersByFx = {};
-    await Promise.all(
-      recent.map(async (f) => {
-        try {
-          const evRes = await fetch(`${API_BASE}/fixtures/events?fixture=${f.fixture.id}`, { headers });
-          const evData = await evRes.json();
-          const goals = {};
-          (evData.response || []).forEach((e) => {
-            if (e.type === "Goal" && e.detail !== "Missed Penalty" && e.detail !== "Own Goal") {
-              const nm = e.player?.name;
-              const tm = e.team?.name;
-              if (nm) {
-                const k = nm + "|" + (tm || "");
-                goals[k] = (goals[k] || 0) + 1;
-              }
-            }
-          });
-          scorersByFx[f.fixture.id] = Object.entries(goals).map(([k, count]) => {
-            const [name, team] = k.split("|");
-            return { name, team, count };
-          });
-        } catch (_) {
-          scorersByFx[f.fixture.id] = [];
-        }
-      })
-    );
-
-    const out = relevant.map((f) => {
-      const fin = FINISHED.includes(f.fixture.status.short);
-      let penWinner = null;
-      if (f.fixture.status.short === "PEN") {
-        if (f.teams.home.winner) penWinner = f.teams.home.name;
-        else if (f.teams.away.winner) penWinner = f.teams.away.name;
-      }
-      return {
-        home: f.teams.home.name,
-        away: f.teams.away.name,
-        homeScore: fin ? f.goals.home : null,
-        awayScore: fin ? f.goals.away : null,
-        finished: fin,
-        stage: f.league.round,     // e.g. "Group Stage - 1", "Round of 32", "Final"
-        date: f.fixture.date,
-        penWinner,
-        scorers: scorersByFx[f.fixture.id] || [],
-      };
+    const res = await fetch(`${API_BASE}/competitions/${COMPETITION}/matches`, {
+      headers: { "X-Auth-Token": key },
     });
+
+    if (!res.ok) {
+      const body = await res.text();
+      return json(502, { error: `API error ${res.status}`, detail: body.slice(0, 300) });
+    }
+
+    const data = await res.json();
+    const matches = data.matches || [];
+
+    const out = matches
+      .filter(m => m.homeTeam?.name && m.awayTeam?.name)
+      .map(m => {
+        const finished = m.status === "FINISHED";
+        const ft       = m.score?.fullTime;
+
+        // Penalty detection
+        const hasPens = m.score?.penalties?.home != null;
+        let penWinner = null;
+        if (hasPens) {
+          if      (m.score.winner === "HOME_TEAM") penWinner = m.homeTeam.name;
+          else if (m.score.winner === "AWAY_TEAM") penWinner = m.awayTeam.name;
+        }
+
+        // Goal scorers — inline in the match response, no extra API calls needed
+        const scorerMap = {};
+        (m.goals || []).forEach(g => {
+          if (g.type === "OWN" || !g.scorer?.name) return; // skip own goals
+          scorerMap[g.scorer.name] = (scorerMap[g.scorer.name] || 0) + 1;
+        });
+        const scorers = Object.entries(scorerMap).map(([name, count]) => ({ name, team: "", count }));
+
+        return {
+          home:      m.homeTeam.name,
+          away:      m.awayTeam.name,
+          homeScore: finished && ft ? ft.home : null,
+          awayScore: finished && ft ? ft.away : null,
+          finished,
+          stage:     STAGE_LABELS[m.stage] || m.stage || "",
+          date:      m.utcDate,
+          penWinner,
+          scorers,
+        };
+      });
 
     return json(200, out);
   } catch (err) {
