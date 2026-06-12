@@ -1,11 +1,10 @@
 // netlify/functions/scheduled-sync.mjs
 // Scheduled function: runs every hour, fetches the latest match data from
-// API-Football, applies it to the shared state in Netlify Blobs.
+// football-data.org (free tier), applies it to the shared state in Netlify Blobs.
 //
-// Required env vars: APIFOOTBALL_KEY, BLOBS_SITE_ID, BLOBS_TOKEN
+// Required env vars: FOOTBALL_DATA_KEY, BLOBS_SITE_ID, BLOBS_TOKEN
 //
-// You can also hit this URL manually to trigger a sync:
-//   /.netlify/functions/scheduled-sync
+// Trigger manually at: /.netlify/functions/scheduled-sync
 
 import { getStore } from "@netlify/blobs";
 
@@ -123,9 +122,7 @@ function namesMatch(a, b){
   if(!isSurname) return false;
   const fA = (ta[0] === mt && ta.length > 1) ? ta[1] : ta[0];
   const fB = (tb[0] === mt && tb.length > 1) ? tb[1] : tb[0];
-  if(fA && fB && fA !== mt && fB !== mt){
-    if(fA[0] !== fB[0]) return false;
-  }
+  if(fA && fB && fA !== mt && fB !== mt){ if(fA[0] !== fB[0]) return false; }
   return true;
 }
 function fxTeams(f, state){
@@ -157,16 +154,12 @@ function applySync(data, state, FIXTURES){
       const local = localList[i];
       if(!local) return;
       const r = state.results[local.id] = state.results[local.id] || {};
-      if(!r.koHome && !r.koAway){
-        r.koHome = m.home;
-        r.koAway = m.away;
-        koFilled++;
-      }
+      if(!r.koHome && !r.koAway){ r.koHome = m.home; r.koAway = m.away; koFilled++; }
       if(m.date) state.times[local.id] = m.date;
     });
   });
 
-  // 2) Update kickoff times for any matched fixture
+  // 2) Update kickoff times
   let timesUpdated = 0;
   data.forEach(m => {
     if(!m.date) return;
@@ -176,10 +169,7 @@ function applySync(data, state, FIXTURES){
              (norm(home)===norm(m.away) && norm(away)===norm(m.home));
     });
     if(!fx) return;
-    if(state.times[fx.id] !== m.date){
-      state.times[fx.id] = m.date;
-      timesUpdated++;
-    }
+    if(state.times[fx.id] !== m.date){ state.times[fx.id] = m.date; timesUpdated++; }
   });
 
   // 3) Finished match results
@@ -213,104 +203,79 @@ function applySync(data, state, FIXTURES){
 }
 
 /* ============================================================
-   API-FOOTBALL fetch helper
+   football-data.org fetch
    ============================================================ */
-const API_BASE = "https://v3.football.api-sports.io";
-const LEAGUE = 1;
-const SEASON = 2026;
-const MAX_EVENT_CALLS = 25;
-const FINISHED = ["FT","AET","PEN"];
+const STAGE_LABELS = {
+  GROUP_STAGE:    "Group Stage",
+  ROUND_OF_32:    "Round of 32",
+  LAST_16:        "Round of 16",
+  ROUND_OF_16:    "Round of 16",
+  QUARTER_FINALS: "Quarter-finals",
+  SEMI_FINALS:    "Semi-finals",
+  THIRD_PLACE:    "Third place",
+  FINAL:          "Final",
+};
 
 async function fetchApiData(key){
-  const headers = { "x-apisports-key": key };
-  const fxRes = await fetch(`${API_BASE}/fixtures?league=${LEAGUE}&season=${SEASON}`, { headers });
-  const fxData = await fxRes.json();
-  const fixtures = fxData.response || [];
-
-  const isReal = n => {
-    if(!n) return false;
-    const l = n.toLowerCase();
-    return !l.includes("winner ") && !l.includes("loser ") &&
-           !l.startsWith("group ") && !l.includes("runner") && l !== "tbd";
-  };
-  const relevant = fixtures.filter(f => isReal(f.teams?.home?.name) && isReal(f.teams?.away?.name));
-
-  const finished = relevant.filter(f => FINISHED.includes(f.fixture.status.short));
-  const recent = [...finished]
-    .sort((a,b) => new Date(b.fixture.date) - new Date(a.fixture.date))
-    .slice(0, MAX_EVENT_CALLS);
-
-  const scorersByFx = {};
-  await Promise.all(recent.map(async f => {
-    try {
-      const evRes = await fetch(`${API_BASE}/fixtures/events?fixture=${f.fixture.id}`, { headers });
-      const evData = await evRes.json();
-      const goals = {};
-      (evData.response || []).forEach(e => {
-        if(e.type === "Goal" && e.detail !== "Missed Penalty" && e.detail !== "Own Goal"){
-          const nm = e.player?.name, tm = e.team?.name;
-          if(nm){
-            const k = nm + "|" + (tm || "");
-            goals[k] = (goals[k] || 0) + 1;
-          }
-        }
-      });
-      scorersByFx[f.fixture.id] = Object.entries(goals).map(([k,count]) => {
-        const [name,team] = k.split("|");
-        return { name, team, count };
-      });
-    } catch { scorersByFx[f.fixture.id] = []; }
-  }));
-
-  return relevant.map(f => {
-    const fin = FINISHED.includes(f.fixture.status.short);
-    let penWinner = null;
-    if(f.fixture.status.short === "PEN"){
-      if(f.teams.home.winner) penWinner = f.teams.home.name;
-      else if(f.teams.away.winner) penWinner = f.teams.away.name;
-    }
-    return {
-      home: f.teams.home.name,
-      away: f.teams.away.name,
-      homeScore: fin ? f.goals.home : null,
-      awayScore: fin ? f.goals.away : null,
-      finished: fin,
-      stage: f.league.round,
-      date: f.fixture.date,
-      penWinner,
-      scorers: scorersByFx[f.fixture.id] || []
-    };
+  const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches", {
+    headers: { "X-Auth-Token": key }
   });
+  if(!res.ok) throw new Error(`football-data.org API error ${res.status}`);
+  const data = await res.json();
+  const matches = data.matches || [];
+
+  return matches
+    .filter(m => m.homeTeam?.name && m.awayTeam?.name)
+    .map(m => {
+      const finished = m.status === "FINISHED";
+      const ft = m.score?.fullTime;
+      const hasPens = m.score?.penalties?.home != null;
+      let penWinner = null;
+      if(hasPens){
+        if(m.score.winner === "HOME_TEAM") penWinner = m.homeTeam.name;
+        else if(m.score.winner === "AWAY_TEAM") penWinner = m.awayTeam.name;
+      }
+      const scorerMap = {};
+      (m.goals || []).forEach(g => {
+        if(g.type === "OWN" || !g.scorer?.name) return;
+        scorerMap[g.scorer.name] = (scorerMap[g.scorer.name] || 0) + 1;
+      });
+      const scorers = Object.entries(scorerMap).map(([name, count]) => ({ name, team: "", count }));
+      return {
+        home: m.homeTeam.name,
+        away: m.awayTeam.name,
+        homeScore: finished && ft ? ft.home : null,
+        awayScore: finished && ft ? ft.away : null,
+        finished,
+        stage: STAGE_LABELS[m.stage] || m.stage || "",
+        date: m.utcDate,
+        penWinner,
+        scorers,
+      };
+    });
 }
 
 /* ============================================================
    MAIN HANDLER
    ============================================================ */
 export default async () => {
-  const apiKey = process.env.APIFOOTBALL_KEY;
+  const apiKey = process.env.FOOTBALL_DATA_KEY;  // <-- updated from APIFOOTBALL_KEY
   const siteID = process.env.BLOBS_SITE_ID;
   const token  = process.env.BLOBS_TOKEN;
 
-  if(!apiKey)  return Response.json({error:"APIFOOTBALL_KEY not set"}, {status:500});
+  if(!apiKey)  return Response.json({error:"FOOTBALL_DATA_KEY not set"}, {status:500});
   if(!siteID || !token) return Response.json({error:"BLOBS_SITE_ID / BLOBS_TOKEN not set"}, {status:500});
 
   try {
-    // 1. Load state from Blobs
     const store = getStore({ name: "go3-state", siteID, token });
     const stateText = await store.get("state");
-    if(!stateText){
-      return Response.json({ok:false, reason:"no state in Blobs yet"});
-    }
+    if(!stateText) return Response.json({ok:false, reason:"no state in Blobs yet"});
     const state = JSON.parse(stateText);
 
-    // 2. Fetch from API
     const apiData = await fetchApiData(apiKey);
-
-    // 3. Apply sync
     const FIXTURES = buildFixtures();
     const result = applySync(apiData, state, FIXTURES);
 
-    // 4. Save updated state + record last-sync time on the state itself
     state._lastAutoSync = new Date().toISOString();
     await store.set("state", JSON.stringify(state));
 
@@ -320,11 +285,9 @@ export default async () => {
       apiMatchesReceived: apiData.length,
       ...result
     });
-  } catch (e) {
+  } catch(e) {
     return Response.json({ ok:false, error: String(e) }, { status: 500 });
   }
 };
 
-export const config = {
-  schedule: "@hourly"
-};
+export const config = { schedule: "@hourly" };
