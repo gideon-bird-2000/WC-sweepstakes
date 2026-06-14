@@ -217,17 +217,37 @@ const STAGE_LABELS = {
 };
 
 async function fetchApiData(key){
-  const res = await fetch("https://api.football-data.org/v4/competitions/WC/matches", {
-    headers: { "X-Auth-Token": key }
-  });
-  if(!res.ok) throw new Error(`football-data.org API error ${res.status}`);
-  const data = await res.json();
-  const matches = data.matches || [];
+  const API = "https://api.football-data.org/v4";
+  const headers = { "X-Auth-Token": key };
 
+  // 1. Bulk fetch — all fixtures
+  const bulkRes = await fetch(`${API}/competitions/WC/matches`, { headers });
+  if(!bulkRes.ok) throw new Error(`football-data.org API error ${bulkRes.status}`);
+  const bulkData = await bulkRes.json();
+  const matches = bulkData.matches || [];
+
+  // 2. Individual calls for recently finished matches to get scorers
+  // Cap at 9 so bulk call + individual calls stay within 10 req/min free tier limit
+  const finished = matches.filter(m => m.status === "FINISHED");
+  const recent = [...finished]
+    .sort((a,b) => new Date(b.utcDate) - new Date(a.utcDate))
+    .slice(0, 9);
+
+  const goalsByMatchId = {};
+  await Promise.all(recent.map(async m => {
+    try {
+      const res = await fetch(`${API}/matches/${m.id}`, { headers });
+      if(!res.ok) return;
+      const data = await res.json();
+      goalsByMatchId[m.id] = data.goals || [];
+    } catch { goalsByMatchId[m.id] = []; }
+  }));
+
+  // 3. Build output
   return matches
     .filter(m => m.homeTeam?.name && m.awayTeam?.name)
     .map(m => {
-      const finished = m.status === "FINISHED";
+      const fin = m.status === "FINISHED";
       const ft = m.score?.fullTime;
       const hasPens = m.score?.penalties?.home != null;
       let penWinner = null;
@@ -235,8 +255,9 @@ async function fetchApiData(key){
         if(m.score.winner === "HOME_TEAM") penWinner = m.homeTeam.name;
         else if(m.score.winner === "AWAY_TEAM") penWinner = m.awayTeam.name;
       }
+      const goals = goalsByMatchId[m.id] || m.goals || [];
       const scorerMap = {};
-      (m.goals || []).forEach(g => {
+      goals.forEach(g => {
         if(g.type === "OWN" || !g.scorer?.name) return;
         scorerMap[g.scorer.name] = (scorerMap[g.scorer.name] || 0) + 1;
       });
@@ -244,9 +265,9 @@ async function fetchApiData(key){
       return {
         home: m.homeTeam.name,
         away: m.awayTeam.name,
-        homeScore: finished && ft ? ft.home : null,
-        awayScore: finished && ft ? ft.away : null,
-        finished,
+        homeScore: fin && ft ? ft.home : null,
+        awayScore: fin && ft ? ft.away : null,
+        finished: fin,
         stage: STAGE_LABELS[m.stage] || m.stage || "",
         date: m.utcDate,
         penWinner,
