@@ -1426,7 +1426,7 @@ async function trySync(){
 /* Smart player-name matcher used by sync + test tool. Handles "Vini Jr"↔"Vinícius Júnior",
    "H. Kane"↔"Harry Kane", "Son"↔"Heung-min Son" (surname-first order too), with
    guards against false positives like sharing first names or surnames. */
-const NAME_STOP_TOKENS = new Set(['jr','jnr','snr','iii','junior','senior']);
+const NAME_STOP_TOKENS = new Set(['jr','jnr','snr','iii']);
 function nameNorm(s){
   return (s||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -1439,24 +1439,57 @@ function nameTokens(n){
     .split(/[\s\-.]+/)
     .filter(t=>t && !NAME_STOP_TOKENS.has(t));
 }
+// Detect abbreviated form like "V. Júnior", "K. Havertz", "I.B. Hwang", "Y.Ayari"
+function getAbbreviatedForm(raw){
+  const cleaned = (raw||'').replace(/\./g,'. ').replace(/\s+/g,' ').trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if(tokens.length<2) return null;
+  const initials=[];
+  for(let i=0;i<tokens.length-1;i++){
+    const t=tokens[i].replace(/\./g,'');
+    if(t.length!==1) return null;
+    initials.push(t.toLowerCase());
+  }
+  const surname=tokens[tokens.length-1].toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z]/g,'');
+  if(!surname || surname.length<2) return null;
+  return {initials,surname};
+}
 function namesMatch(a,b){
   const na=nameNorm(a), nb=nameNorm(b);
   if(!na||!nb) return false;
   if(na===nb) return true;
+  const ta=nameTokens(a).filter(t=>t.length>=2);
+  const tb=nameTokens(b).filter(t=>t.length>=2);
+  if(!ta.length||!tb.length) return false;
+  // Abbreviated form match: "V. Júnior" vs "Vinícius Júnior"
+  // Either side could be the abbreviated one
+  const tryAbbrev = (abbrev, fullTokens) => {
+    if(!abbrev) return false;
+    const surname=fullTokens[fullTokens.length-1];
+    const firstInitial=fullTokens[0][0];
+    const surnameOK = surname===abbrev.surname ||
+      (surname.length>=4 && abbrev.surname.length>=4 &&
+       (surname.startsWith(abbrev.surname)||abbrev.surname.startsWith(surname)));
+    if(!surnameOK) return false;
+    return abbrev.initials[0]===firstInitial;
+  };
+  if(tryAbbrev(getAbbreviatedForm(a), tb)) return true;
+  if(tryAbbrev(getAbbreviatedForm(b), ta)) return true;
+  // Full substring match
   if(na.length>=4 && nb.includes(na)) return true;
   if(nb.length>=4 && na.includes(nb)) return true;
-  const ta=nameTokens(a), tb=nameTokens(b);
-  if(!ta.length||!tb.length) return false;
-  const meanA=ta.filter(t=>t.length>=2), meanB=tb.filter(t=>t.length>=2);
-  if(!meanA.length||!meanB.length) return false;
+  // Token overlap
   const tokenOK=(t1,t2)=> t1===t2 || (t1.length>=4 && t2.length>=4 && (t1.startsWith(t2)||t2.startsWith(t1)));
-  const shorter = meanA.length<=meanB.length?meanA:meanB;
-  const longer  = meanA.length<=meanB.length?meanB:meanA;
+  const shorter = ta.length<=tb.length?ta:tb;
+  const longer  = ta.length<=tb.length?tb:ta;
   if(shorter.length>=2 && shorter.every(t1=>longer.some(t2=>tokenOK(t1,t2)))) return true;
+  // Surname + first-initial guard
   let mt=null;
-  for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1,t2)){mt=t1;break;} } if(mt)break; }
+  for(const t1 of ta){ for(const t2 of tb){ if(tokenOK(t1,t2)){mt=t1;break;} } if(mt)break; }
   if(!mt) return false;
-  const sA=meanA[meanA.length-1], sB=meanB[meanB.length-1];
+  const sA=ta[ta.length-1], sB=tb[tb.length-1];
   const isSurname = mt===sA||mt===sB ||
     (mt.length>=4 && sA.length>=4 && (mt.startsWith(sA)||sA.startsWith(mt))) ||
     (mt.length>=4 && sB.length>=4 && (mt.startsWith(sB)||sB.startsWith(mt)));
