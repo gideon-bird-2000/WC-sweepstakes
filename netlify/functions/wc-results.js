@@ -1,91 +1,112 @@
 // netlify/functions/wc-results.js
-// Fetches World Cup 2026 results from football-data.org (free tier).
-// Bulk call for all fixtures + individual calls for recently finished matches to get scorers.
-//
-// SETUP: env var FOOTBALL_DATA_KEY = your free token from football-data.org
+// Fetches WC 2026 results from worldcup26.ir — free, no API key, includes scorers.
+// Returns shape matching what applySync() expects in index.html.
 
-const API_BASE    = "https://api.football-data.org/v4";
-const COMPETITION = "WC";
-const MAX_SCORER_CALLS = 9; // bulk call + up to 9 individual = 10 total (free tier limit)
+const API_URL = "https://worldcup26.ir/get/games";
 
-const STAGE_LABELS = {
-  GROUP_STAGE:    "Group Stage",
-  ROUND_OF_32:    "Round of 32",
-  LAST_16:        "Round of 16",
-  ROUND_OF_16:    "Round of 16",
-  QUARTER_FINALS: "Quarter-finals",
-  SEMI_FINALS:    "Semi-finals",
-  THIRD_PLACE:    "Third place",
-  FINAL:          "Final",
+// Resolve TBD knockout team labels into actual stage names matching local fixtures.
+// worldcup26.ir uses group="R32"/"R16"/"QF"/"SF"/"FINAL"/"3RD"; map to our stages.
+const STAGE_MAP = {
+  R32:   "Round of 32",
+  R16:   "Round of 16",
+  QF:    "Quarter-final",
+  SF:    "Semi-final",
+  "3RD": "Third place",
+  FINAL: "Final",
 };
 
+// Parse the home_scorers/away_scorers field. Examples:
+//   "{\"V. Júnior 32'\"}"
+//   "{\"Felix Nmecha 7'\",\"K. Havertz 45'+5'(p)\",\"D. Bobadilla 7'(OG)\"}"
+//   "{“J. Quiñones 9'”,”R. Jiménez 67'”}"  (fancy quotes — match 1 quirk)
+//   "null"  or  null
+function parseScorers(raw) {
+  if (!raw || raw === "null" || raw === null) return [];
+  // Strip enclosing { }
+  let s = String(raw).trim().replace(/^\{/, "").replace(/\}$/, "");
+  // Normalize fancy unicode quotes to ASCII
+  s = s.replace(/[\u201C\u201D\u2018\u2019]/g, '"');
+  // Split on quote-comma-quote, then strip remaining quotes
+  const parts = s.split(/"\s*,\s*"/).map(p => p.replace(/^"|"$/g, "").trim()).filter(Boolean);
+  // Each part looks like: "V. Júnior 32'" or "K. Havertz 45'+5'(p)" or "D. Bobadilla 7'(OG)"
+  return parts.map(p => {
+    const isOG = /\(OG\)/i.test(p);
+    // Strip trailing minute and annotations: " 32'" or " 45'+5'(p)" or " 7'(OG)"
+    const name = p.replace(/\s*\d+'(\+\d+')?\s*(\(OG\)|\(p\))?\s*$/i, "").trim();
+    return { name, isOG };
+  });
+}
+
+// Aggregate parsed scorers, EXCLUDING own goals (they don't help the scorer's owner)
+function aggregateScorers(parsed) {
+  const counts = {};
+  parsed.forEach(p => {
+    if (p.isOG) return;
+    if (!p.name) return;
+    counts[p.name] = (counts[p.name] || 0) + 1;
+  });
+  return Object.entries(counts).map(([name, count]) => ({ name, team: "", count }));
+}
+
 exports.handler = async function () {
-  const key = process.env.FOOTBALL_DATA_KEY;
-  if (!key) return json(500, { error: "FOOTBALL_DATA_KEY env var not set." });
-
   try {
-    // 1. Bulk fetch — all 104 fixtures
-    const bulkRes = await fetch(`${API_BASE}/competitions/${COMPETITION}/matches`, {
-      headers: { "X-Auth-Token": key },
-    });
-    if (!bulkRes.ok) {
-      const body = await bulkRes.text();
-      return json(502, { error: `API error ${bulkRes.status}`, detail: body.slice(0, 300) });
+    const res = await fetch(API_URL, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      return json(502, { error: `worldcup26.ir API error ${res.status}` });
     }
-    const bulkData = await bulkRes.json();
-    const matches  = bulkData.matches || [];
+    const data = await res.json();
+    const games = Array.isArray(data.games) ? data.games : [];
 
-    // 2. Individual calls for recently finished matches to get goal scorers
-    const finished = matches.filter(m => m.status === "FINISHED");
-    const recent   = [...finished]
-      .sort((a, b) => new Date(b.utcDate) - new Date(a.utcDate))
-      .slice(0, MAX_SCORER_CALLS);
+    const out = games.map(g => {
+      const finished = String(g.finished).toUpperCase() === "TRUE";
 
-    const goalsByMatchId = {};
-    await Promise.all(recent.map(async m => {
-      try {
-        const res  = await fetch(`${API_BASE}/matches/${m.id}`, { headers: { "X-Auth-Token": key } });
-        if (!res.ok) return;
-        const data = await res.json();
-        goalsByMatchId[m.id] = data.goals || [];
-      } catch { goalsByMatchId[m.id] = []; }
-    }));
+      // For finished games we have actual team names; for KO TBDs we have labels
+      const home = g.home_team_name_en || g.home_team_label || "";
+      const away = g.away_team_name_en || g.away_team_label || "";
 
-    // 3. Build output
-    const out = matches
-      .filter(m => m.homeTeam?.name && m.awayTeam?.name)
-      .map(m => {
-        const fin = m.status === "FINISHED";
-        const ft  = m.score?.fullTime;
+      // Stage: groups use "Group X" style; KO uses STAGE_MAP
+      let stage = "";
+      if (g.type === "group") {
+        stage = "Group Stage";
+      } else if (STAGE_MAP[g.group]) {
+        stage = STAGE_MAP[g.group];
+      } else {
+        stage = g.group || "";
+      }
 
-        const hasPens = m.score?.penalties?.home != null;
-        let penWinner = null;
-        if (hasPens) {
-          if      (m.score.winner === "HOME_TEAM") penWinner = m.homeTeam.name;
-          else if (m.score.winner === "AWAY_TEAM") penWinner = m.awayTeam.name;
+      // Parse scorers, drop own goals
+      const homeScorers = aggregateScorers(parseScorers(g.home_scorers));
+      const awayScorers = aggregateScorers(parseScorers(g.away_scorers));
+      const scorers = [...homeScorers, ...awayScorers];
+
+      // Date: convert "06/13/2026 18:00" (US format) to ISO. Assume UTC for sync purposes;
+      // local kickoff times are already baked into index.html's KICKOFFS const so this only
+      // affects the applySync time-update step which the client tolerates.
+      let date = null;
+      if (g.local_date) {
+        const m = g.local_date.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+        if (m) {
+          const [, mo, da, yr, hr, mn] = m;
+          date = `${yr}-${mo}-${da}T${hr}:${mn}:00Z`;
         }
+      }
 
-        // Use detailed goals from individual call, fall back to bulk (usually empty)
-        const goals = goalsByMatchId[m.id] || m.goals || [];
-        const scorerMap = {};
-        goals.forEach(g => {
-          if (g.type === "OWN" || !g.scorer?.name) return;
-          scorerMap[g.scorer.name] = (scorerMap[g.scorer.name] || 0) + 1;
-        });
-        const scorers = Object.entries(scorerMap).map(([name, count]) => ({ name, team: "", count }));
+      // Score: strings -> ints, only for finished
+      const hs = finished ? parseInt(g.home_score, 10) : null;
+      const as = finished ? parseInt(g.away_score, 10) : null;
 
-        return {
-          home:      m.homeTeam.name,
-          away:      m.awayTeam.name,
-          homeScore: fin && ft ? ft.home : null,
-          awayScore: fin && ft ? ft.away : null,
-          finished:  fin,
-          stage:     STAGE_LABELS[m.stage] || m.stage || "",
-          date:      m.utcDate,
-          penWinner,
-          scorers,
-        };
-      });
+      return {
+        home,
+        away,
+        homeScore: hs,
+        awayScore: as,
+        finished,
+        stage,
+        date,
+        penWinner: null, // worldcup26.ir doesn't expose pen winner explicitly
+        scorers,
+      };
+    });
 
     return json(200, out);
   } catch (err) {
