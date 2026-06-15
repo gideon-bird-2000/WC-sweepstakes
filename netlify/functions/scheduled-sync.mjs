@@ -1,8 +1,8 @@
 // netlify/functions/scheduled-sync.mjs
-// Scheduled function: runs every hour, fetches the latest match data from
-// football-data.org (free tier), applies it to the shared state in Netlify Blobs.
+// Scheduled function: runs every 5 minutes, fetches latest match data from
+// worldcup26.ir (free, no API key, includes scorers) and applies it to shared state.
 //
-// Required env vars: FOOTBALL_DATA_KEY, BLOBS_SITE_ID, BLOBS_TOKEN
+// Required env vars: BLOBS_SITE_ID, BLOBS_TOKEN
 //
 // Trigger manually at: /.netlify/functions/scheduled-sync
 
@@ -88,7 +88,7 @@ function norm(s){
     .replace(/[^a-z]/g,"");
   return ALIASES[base] || base;
 }
-const STOP_TOKENS = new Set(['jr','jnr','snr','iii','junior','senior']);
+const STOP_TOKENS = new Set(['jr','jnr','snr','iii']);
 function tokenize(n){
   return (n||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -96,26 +96,53 @@ function tokenize(n){
     .split(/[\s\-.]+/)
     .filter(t => t && !STOP_TOKENS.has(t));
 }
+function getAbbreviatedForm(raw){
+  const cleaned = (raw||'').replace(/\./g,'. ').replace(/\s+/g,' ').trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if(tokens.length<2) return null;
+  const initials=[];
+  for(let i=0;i<tokens.length-1;i++){
+    const t=tokens[i].replace(/\./g,'');
+    if(t.length!==1) return null;
+    initials.push(t.toLowerCase());
+  }
+  const surname=tokens[tokens.length-1].toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z]/g,'');
+  if(!surname || surname.length<2) return null;
+  return {initials,surname};
+}
 function namesMatch(a, b){
   const na = norm(a), nb = norm(b);
   if(!na || !nb) return false;
   if(na === nb) return true;
+  const ta = tokenize(a).filter(t => t.length >= 2);
+  const tb = tokenize(b).filter(t => t.length >= 2);
+  if(!ta.length || !tb.length) return false;
+  // Abbreviated form match: "V. Júnior" vs "Vinícius Júnior"
+  const tryAbbrev = (abbrev, fullTokens) => {
+    if(!abbrev) return false;
+    const surname=fullTokens[fullTokens.length-1];
+    const firstInitial=fullTokens[0][0];
+    const surnameOK = surname===abbrev.surname ||
+      (surname.length>=4 && abbrev.surname.length>=4 &&
+       (surname.startsWith(abbrev.surname)||abbrev.surname.startsWith(surname)));
+    if(!surnameOK) return false;
+    return abbrev.initials[0]===firstInitial;
+  };
+  if(tryAbbrev(getAbbreviatedForm(a), tb)) return true;
+  if(tryAbbrev(getAbbreviatedForm(b), ta)) return true;
   if(na.length >= 4 && nb.includes(na)) return true;
   if(nb.length >= 4 && na.includes(nb)) return true;
-  const ta = tokenize(a), tb = tokenize(b);
-  if(!ta.length || !tb.length) return false;
-  const meanA = ta.filter(t => t.length >= 2);
-  const meanB = tb.filter(t => t.length >= 2);
-  if(!meanA.length || !meanB.length) return false;
   const tokenOK = (t1, t2) =>
     t1 === t2 || (t1.length >= 4 && t2.length >= 4 && (t1.startsWith(t2) || t2.startsWith(t1)));
-  const shorter = meanA.length <= meanB.length ? meanA : meanB;
-  const longer  = meanA.length <= meanB.length ? meanB : meanA;
+  const shorter = ta.length <= tb.length ? ta : tb;
+  const longer  = ta.length <= tb.length ? tb : ta;
   if(shorter.length >= 2 && shorter.every(t1 => longer.some(t2 => tokenOK(t1, t2)))) return true;
   let mt = null;
-  for(const t1 of meanA){ for(const t2 of meanB){ if(tokenOK(t1, t2)){mt=t1; break;} } if(mt) break; }
+  for(const t1 of ta){ for(const t2 of tb){ if(tokenOK(t1, t2)){mt=t1; break;} } if(mt) break; }
   if(!mt) return false;
-  const sA = meanA[meanA.length-1], sB = meanB[meanB.length-1];
+  const sA = ta[ta.length-1], sB = tb[tb.length-1];
   const isSurname = mt===sA || mt===sB ||
     (mt.length >= 4 && sA.length >= 4 && (mt.startsWith(sA) || sA.startsWith(mt))) ||
     (mt.length >= 4 && sB.length >= 4 && (mt.startsWith(sB) || sB.startsWith(mt)));
@@ -203,88 +230,81 @@ function applySync(data, state, FIXTURES){
 }
 
 /* ============================================================
-   football-data.org fetch
+   worldcup26.ir fetch — free, no API key, includes scorers
    ============================================================ */
-const STAGE_LABELS = {
-  GROUP_STAGE:    "Group Stage",
-  ROUND_OF_32:    "Round of 32",
-  LAST_16:        "Round of 16",
-  ROUND_OF_16:    "Round of 16",
-  QUARTER_FINALS: "Quarter-finals",
-  SEMI_FINALS:    "Semi-finals",
-  THIRD_PLACE:    "Third place",
-  FINAL:          "Final",
+const WC26_STAGE_MAP = {
+  R32:"Round of 32", R16:"Round of 16", QF:"Quarter-final",
+  SF:"Semi-final", "3RD":"Third place", FINAL:"Final"
 };
 
-async function fetchApiData(key){
-  const API = "https://api.football-data.org/v4";
-  const headers = { "X-Auth-Token": key };
+function wc26ParseScorers(raw){
+  if(!raw || raw==="null" || raw===null) return [];
+  let s = String(raw).trim().replace(/^\{/,"").replace(/\}$/,"");
+  s = s.replace(/[\u201C\u201D\u2018\u2019]/g,'"');
+  const parts = s.split(/"\s*,\s*"/).map(p => p.replace(/^"|"$/g,"").trim()).filter(Boolean);
+  return parts.map(p => {
+    const isOG = /\(OG\)/i.test(p);
+    const name = p.replace(/\s*\d+'(\+\d+')?\s*(\(OG\)|\(p\))?\s*$/i,"").trim();
+    return {name,isOG};
+  });
+}
+function wc26AggregateScorers(parsed){
+  const counts = {};
+  parsed.forEach(p => {
+    if(p.isOG || !p.name) return;
+    counts[p.name] = (counts[p.name]||0) + 1;
+  });
+  return Object.entries(counts).map(([name,count]) => ({name,team:"",count}));
+}
 
-  // 1. Bulk fetch — all fixtures
-  const bulkRes = await fetch(`${API}/competitions/WC/matches`, { headers });
-  if(!bulkRes.ok) throw new Error(`football-data.org API error ${bulkRes.status}`);
-  const bulkData = await bulkRes.json();
-  const matches = bulkData.matches || [];
+async function fetchApiData(){
+  const res = await fetch("https://worldcup26.ir/get/games", {
+    headers: {"Accept":"application/json"}
+  });
+  if(!res.ok) throw new Error(`worldcup26.ir API error ${res.status}`);
+  const data = await res.json();
+  const games = Array.isArray(data.games) ? data.games : [];
 
-  // 2. Individual calls for recently finished matches to get scorers
-  // Cap at 9 so bulk call + individual calls stay within 10 req/min free tier limit
-  const finished = matches.filter(m => m.status === "FINISHED");
-  const recent = [...finished]
-    .sort((a,b) => new Date(b.utcDate) - new Date(a.utcDate))
-    .slice(0, 9);
+  return games.map(g => {
+    const finished = String(g.finished).toUpperCase() === "TRUE";
+    const home = g.home_team_name_en || g.home_team_label || "";
+    const away = g.away_team_name_en || g.away_team_label || "";
 
-  const goalsByMatchId = {};
-  await Promise.all(recent.map(async m => {
-    try {
-      const res = await fetch(`${API}/matches/${m.id}`, { headers });
-      if(!res.ok) return;
-      const data = await res.json();
-      goalsByMatchId[m.id] = data.goals || [];
-    } catch { goalsByMatchId[m.id] = []; }
-  }));
+    let stage = "";
+    if(g.type === "group") stage = "Group Stage";
+    else if(WC26_STAGE_MAP[g.group]) stage = WC26_STAGE_MAP[g.group];
+    else stage = g.group || "";
 
-  // 3. Build output
-  return matches
-    .filter(m => m.homeTeam?.name && m.awayTeam?.name)
-    .map(m => {
-      const fin = m.status === "FINISHED";
-      const ft = m.score?.fullTime;
-      const hasPens = m.score?.penalties?.home != null;
-      let penWinner = null;
-      if(hasPens){
-        if(m.score.winner === "HOME_TEAM") penWinner = m.homeTeam.name;
-        else if(m.score.winner === "AWAY_TEAM") penWinner = m.awayTeam.name;
-      }
-      const goals = goalsByMatchId[m.id] || m.goals || [];
-      const scorerMap = {};
-      goals.forEach(g => {
-        if(g.type === "OWN" || !g.scorer?.name) return;
-        scorerMap[g.scorer.name] = (scorerMap[g.scorer.name] || 0) + 1;
-      });
-      const scorers = Object.entries(scorerMap).map(([name, count]) => ({ name, team: "", count }));
-      return {
-        home: m.homeTeam.name,
-        away: m.awayTeam.name,
-        homeScore: fin && ft ? ft.home : null,
-        awayScore: fin && ft ? ft.away : null,
-        finished: fin,
-        stage: STAGE_LABELS[m.stage] || m.stage || "",
-        date: m.utcDate,
-        penWinner,
-        scorers,
-      };
-    });
+    const homeScorers = wc26AggregateScorers(wc26ParseScorers(g.home_scorers));
+    const awayScorers = wc26AggregateScorers(wc26ParseScorers(g.away_scorers));
+    const scorers = [...homeScorers, ...awayScorers];
+
+    let date = null;
+    if(g.local_date){
+      const m = g.local_date.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+      if(m){ const[,mo,da,yr,hr,mn]=m; date = `${yr}-${mo}-${da}T${hr}:${mn}:00Z`; }
+    }
+
+    return {
+      home, away,
+      homeScore: finished ? parseInt(g.home_score,10) : null,
+      awayScore: finished ? parseInt(g.away_score,10) : null,
+      finished,
+      stage,
+      date,
+      penWinner: null,
+      scorers,
+    };
+  });
 }
 
 /* ============================================================
    MAIN HANDLER
    ============================================================ */
 export default async () => {
-  const apiKey = process.env.FOOTBALL_DATA_KEY;  // <-- updated from APIFOOTBALL_KEY
   const siteID = process.env.BLOBS_SITE_ID;
   const token  = process.env.BLOBS_TOKEN;
 
-  if(!apiKey)  return Response.json({error:"FOOTBALL_DATA_KEY not set"}, {status:500});
   if(!siteID || !token) return Response.json({error:"BLOBS_SITE_ID / BLOBS_TOKEN not set"}, {status:500});
 
   try {
@@ -293,7 +313,7 @@ export default async () => {
     if(!stateText) return Response.json({ok:false, reason:"no state in Blobs yet"});
     const state = JSON.parse(stateText);
 
-    const apiData = await fetchApiData(apiKey);
+    const apiData = await fetchApiData();
     const FIXTURES = buildFixtures();
     const result = applySync(apiData, state, FIXTURES);
 
@@ -311,4 +331,4 @@ export default async () => {
   }
 };
 
-export const config = { schedule: "@hourly" };
+export const config = { schedule: "*/5 * * * *" };
