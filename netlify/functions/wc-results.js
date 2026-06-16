@@ -31,8 +31,10 @@ function parseScorers(raw) {
   // Each part looks like: "V. Júnior 32'" or "K. Havertz 45'+5'(p)" or "D. Bobadilla 7'(OG)"
   return parts.map(p => {
     const isOG = /\(OG\)/i.test(p);
-    // Strip trailing minute and annotations: " 32'" or " 45'+5'(p)" or " 7'(OG)"
-    const name = p.replace(/\s*\d+'(\+\d+')?\s*(\(OG\)|\(p\))?\s*$/i, "").trim();
+    // Strip trailing minute and annotations. Handles all observed formats:
+    //   " 32'"  " 45'+5'(p)"  " 7'(OG)"  " 90+"  " 90+3"  " 89'(OG)"
+    // Apostrophes are optional since worldcup26.ir sometimes drops them.
+    const name = p.replace(/\s*\d+'?(\+\d*'?)?\s*(\(OG\)|\(p\))?\s*$/i, "").trim();
     return { name, isOG };
   });
 }
