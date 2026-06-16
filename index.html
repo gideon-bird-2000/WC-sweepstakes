@@ -819,7 +819,7 @@ function lineChart(ps){
 }
 
 /* ---------------- FIXTURES ---------------- */
-let fxFilter={group:"all",owner:"all",show:"all",sort:"stage"};
+let fxFilter={group:"all",owner:"all",show:"all",sort:"chrono"};
 function fmtKickoff(iso, withDate){
   if(!iso) return '';
   const d=new Date(iso);
@@ -954,11 +954,11 @@ function renderPlayers(){
   }
   let blocks=COMPETITORS.map(c=>{
     const t=totals(c);
-    const myPlayers=S.players.filter(p=>p.owner===c).map(p=>({...p,g:playerGoals(p.id)})).sort((a,b)=>b.g-a.g);
+    const myPlayers=S.players.filter(p=>p.owner===c).map(p=>({...p,g:playerGoals(p.id)})).sort((a,b)=>a.name.localeCompare(b.name));
     const topG=Math.max(0,...myPlayers.map(p=>p.g));
     const myTeams=ALL_TEAMS.filter(tm=>teamOwner(tm)===c)
       .map(tm=>({tm,...singleTeamStats(tm)}))
-      .sort((a,b)=>(b.W-a.W)||(b.GF-a.GF)||a.tm.localeCompare(b.tm));
+      .sort((a,b)=>a.tm.localeCompare(b.tm));
 
     const playerCards = myPlayers.length? myPlayers.map(p=>`
       <div class="pcard ${p.g>0&&p.g===topG?'top':''}">
