@@ -244,7 +244,7 @@ function wc26ParseScorers(raw){
   const parts = s.split(/"\s*,\s*"/).map(p => p.replace(/^"|"$/g,"").trim()).filter(Boolean);
   return parts.map(p => {
     const isOG = /\(OG\)/i.test(p);
-    const name = p.replace(/\s*\d+'(\+\d+')?\s*(\(OG\)|\(p\))?\s*$/i,"").trim();
+    const name = p.replace(/\s*\d+'?(\+\d*'?)?\s*(\(OG\)|\(p\))?\s*$/i,"").trim();
     return {name,isOG};
   });
 }
