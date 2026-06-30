@@ -220,6 +220,9 @@ function applySync(data, state, FIXTURES){
     r.as = swap ? m.homeScore : m.awayScore;
     r.winner = r.hs>r.as ? 'home' : r.as>r.hs ? 'away' :
       (m.penWinner ? (norm(m.penWinner)===norm(fxTeams(fx,state).home) ? 'home' : 'away') : 'draw');
+    if(m.penWinner && r.hs===r.as){
+      r.pen = norm(m.penWinner)===norm(fxTeams(fx,state).home) ? 'home' : 'away';
+    }
     if(Array.isArray(m.scorers)){
       r.goals = r.goals || {};
       m.scorers.forEach(sc => {
@@ -341,6 +344,7 @@ async function fetchApiData(){
 export default async () => {
   const siteID = process.env.BLOBS_SITE_ID;
   const token  = process.env.BLOBS_TOKEN;
+  const siteURL = process.env.URL || 'https://wc-sweepstakes.netlify.app';
 
   if(!siteID || !token) return Response.json({error:"BLOBS_SITE_ID / BLOBS_TOKEN not set"}, {status:500});
 
@@ -350,7 +354,12 @@ export default async () => {
     if(!stateText) return Response.json({ok:false, reason:"no state in Blobs yet"});
     const state = JSON.parse(stateText);
 
-    const apiData = await fetchApiData();
+    // Call the wc-results function (single source of truth for API data + penalty inference)
+    const apiRes = await fetch(`${siteURL}/.netlify/functions/wc-results`);
+    if(!apiRes.ok) throw new Error(`wc-results returned ${apiRes.status}`);
+    const apiData = await apiRes.json();
+    if(!Array.isArray(apiData)) throw new Error('wc-results did not return an array');
+
     const FIXTURES = buildFixtures();
     const result = applySync(apiData, state, FIXTURES);
 
