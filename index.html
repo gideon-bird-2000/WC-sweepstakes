@@ -1568,6 +1568,25 @@ function applySync(data){
 
   S.times = S.times || {};
 
+  // Map API team name to local team name (e.g. "Ivory Coast" → "Côte d'Ivoire")
+  const _localNameCache={};
+  const toLocalName=apiName=>{
+    if(!apiName) return apiName;
+    if(_localNameCache[apiName]) return _localNameCache[apiName];
+    const n=norm(apiName);
+    const match=ALL_TEAMS.find(t=>norm(t)===n);
+    _localNameCache[apiName]=match||apiName;
+    return _localNameCache[apiName];
+  };
+
+  // ----- 0) Fix any previously-stored API names in KO slots -----
+  FIXTURES.filter(f=>f.ko).forEach(f=>{
+    const r=S.results[f.id];
+    if(!r) return;
+    if(r.koHome && !isPlaceholderName(r.koHome)) r.koHome=toLocalName(r.koHome);
+    if(r.koAway && !isPlaceholderName(r.koAway)) r.koAway=toLocalName(r.koAway);
+  });
+
   // ----- 1) Bracket resolution: fill TBD knockout slots -----
   const apiByStage={};
   data.forEach(m=>{
@@ -1593,8 +1612,8 @@ function applySync(data){
       // Overwrite if our stored slot is empty OR currently holds a placeholder
       const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
       if(apiHasRealNames && slotIsPlaceholder){
-        r.koHome=m.home;
-        r.koAway=m.away;
+        r.koHome=toLocalName(m.home);
+        r.koAway=toLocalName(m.away);
         koFilled++;
       }
       // also record the API kickoff datetime onto this KO slot (positional)
