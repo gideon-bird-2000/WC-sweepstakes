@@ -1568,6 +1568,11 @@ function applySync(data){
 
   S.times = S.times || {};
 
+  // A bracket slot is "placeholder" if empty OR contains label words like "Winner",
+  // "Runner-up", "Loser", "Group X", or "Match" — these come from API entries that
+  // haven't resolved yet. Real team names trigger overwrites.
+  const isPlaceholderName = s => !s || /\b(winner|runner-?up|loser|group|3rd)\b/i.test(s) || /^match\s/i.test(s);
+
   // Map API team name to local team name (e.g. "Ivory Coast" → "Côte d'Ivoire")
   const _localNameCache={};
   const toLocalName=apiName=>{
@@ -1595,10 +1600,6 @@ function applySync(data){
     (apiByStage[stage]=apiByStage[stage]||[]).push(m);
   });
   let koFilled=0;
-  // A bracket slot is "placeholder" if empty OR contains label words like "Winner",
-  // "Runner-up", "Loser", "Group X", or "Match" — these come from API entries that
-  // haven't resolved yet. Real team names trigger overwrites.
-  const isPlaceholderName = s => !s || /\b(winner|runner-?up|loser|group|3rd)\b/i.test(s) || /^match\s/i.test(s);
   Object.keys(apiByStage).forEach(stage=>{
     const apiList=apiByStage[stage].slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
     const localList=FIXTURES.filter(f=>f.ko&&f.stage===stage)
