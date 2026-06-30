@@ -173,6 +173,8 @@ function applySync(data, state, FIXTURES){
     (apiByStage[stage] = apiByStage[stage] || []).push(m);
   });
   let koFilled = 0;
+  // A bracket slot is "placeholder" if it contains words like "Winner"/"Runner-up"/"Loser"/"Group" or starts with "Match"
+  const isPlaceholderName = s => !s || /\b(winner|runner-?up|loser|group|3rd)\b/i.test(s) || /^match\s/i.test(s);
   Object.keys(apiByStage).forEach(stage => {
     const apiList = apiByStage[stage].slice().sort((a,b) => new Date(a.date) - new Date(b.date));
     const localList = FIXTURES.filter(f => f.ko && f.stage === stage)
@@ -181,7 +183,9 @@ function applySync(data, state, FIXTURES){
       const local = localList[i];
       if(!local) return;
       const r = state.results[local.id] = state.results[local.id] || {};
-      if(!r.koHome && !r.koAway){ r.koHome = m.home; r.koAway = m.away; koFilled++; }
+      const apiHasRealNames = !isPlaceholderName(m.home) && !isPlaceholderName(m.away);
+      const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
+      if(apiHasRealNames && slotIsPlaceholder){ r.koHome = m.home; r.koAway = m.away; koFilled++; }
       if(m.date) state.times[local.id] = m.date;
     });
   });
