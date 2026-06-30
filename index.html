@@ -293,7 +293,7 @@ table.grp-t tr.qual>td:first-child{border-left:2px solid rgba(200,255,77,.45);pa
 .bracket-round{display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-width:130px}
 .bracket-round-hd{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:6px;font-weight:700;white-space:nowrap}
 .bk-match{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:8px;padding:5px 8px;font-size:11px;min-width:120px}
-.bk-match.played{border-color:var(--lime)}
+.bk-match.played{border-color:var(--line)}
 .bk-team{display:flex;align-items:center;gap:5px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-team .bk-fl{font-size:14px;line-height:1;flex:none}
 .bk-team .bk-nm{flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -2058,7 +2058,9 @@ function bracketHTML(){
       if(isTBD) return `<div class="bk-match"><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div><div class="bk-vs"></div><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div></div>`;
       const hWin=played&&r.winner==='home';
       const aWin=played&&r.winner==='away';
-      return `<div class="bk-match${played?' played':''}">
+      const winOwner=hWin?owH:(aWin?owA:null);
+      const winBorder=played&&winOwner?'border-color:'+CRAW[winOwner]:'';
+      return `<div class="bk-match${played?' played':''}" style="${winBorder}">
         <div class="bk-team${hWin?' winner':''}${aWin?' loser':''}">
           <span class="bk-fl">${FLAG[home]||'⚽'}</span>
           <span class="bk-nm" style="${owH?'color:'+CRAW[owH]:''}">${home}</span>
@@ -2085,8 +2087,12 @@ function bracketHTML(){
     const isTBD=home==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(home);
     if(!isTBD){
       const owH=teamOwner(home),owA=teamOwner(away);
+      const tpHWin=played&&r.winner==='home';
+      const tpAWin=played&&r.winner==='away';
+      const tpWinOwner=tpHWin?owH:(tpAWin?owA:null);
+      const tpBorder=played&&tpWinOwner?'border-color:'+CRAW[tpWinOwner]+';':'';
       tpHtml=`<div style="margin-top:12px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:2px">3rd Place</div>
-        <div class="bk-match${played?' played':''}" style="max-width:200px;margin-top:6px">
+        <div class="bk-match${played?' played':''}" style="max-width:200px;margin-top:6px;${tpBorder}">
           <div class="bk-team"><span class="bk-fl">${FLAG[home]||''}</span><span class="bk-nm" style="${owH?'color:'+CRAW[owH]:''}">${home}</span>${played?`<span class="bk-sc">${r.hs}</span>`:''}</div>
           <div class="bk-vs"></div>
           <div class="bk-team"><span class="bk-fl">${FLAG[away]||''}</span><span class="bk-nm" style="${owA?'color:'+CRAW[owA]:''}">${away}</span>${played?`<span class="bk-sc">${r.as}</span>`:''}</div>
