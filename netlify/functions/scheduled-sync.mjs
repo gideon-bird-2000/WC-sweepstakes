@@ -25,6 +25,7 @@ const GROUPS = {
   K:["Portugal","DR Congo","Uzbekistan","Colombia"],
   L:["England","Croatia","Ghana","Panama"]
 };
+const ALL_TEAMS = Object.values(GROUPS).flat();
 const GROUP_DATES = {
   A:[11,18,24], B:[12,18,24], C:[13,19,24], D:[12,19,25],
   E:[14,20,25], F:[14,20,25], G:[15,21,26], H:[15,21,26],
@@ -175,6 +176,23 @@ function applySync(data, state, FIXTURES){
   let koFilled = 0;
   // A bracket slot is "placeholder" if it contains words like "Winner"/"Runner-up"/"Loser"/"Group" or starts with "Match"
   const isPlaceholderName = s => !s || /\b(winner|runner-?up|loser|group|3rd)\b/i.test(s) || /^match\s/i.test(s);
+  // Map API team name to local name (e.g. "Ivory Coast" → "Côte d'Ivoire")
+  const _lnc = {};
+  const toLocalName = apiName => {
+    if(!apiName) return apiName;
+    if(_lnc[apiName]) return _lnc[apiName];
+    const n = norm(apiName);
+    const match = ALL_TEAMS.find(t => norm(t) === n);
+    _lnc[apiName] = match || apiName;
+    return _lnc[apiName];
+  };
+  // Fix any previously-stored API names in KO slots
+  FIXTURES.filter(f => f.ko).forEach(f => {
+    const r = state.results[f.id];
+    if(!r) return;
+    if(r.koHome && !isPlaceholderName(r.koHome)) r.koHome = toLocalName(r.koHome);
+    if(r.koAway && !isPlaceholderName(r.koAway)) r.koAway = toLocalName(r.koAway);
+  });
   Object.keys(apiByStage).forEach(stage => {
     const apiList = apiByStage[stage].slice().sort((a,b) => new Date(a.date) - new Date(b.date));
     const localList = FIXTURES.filter(f => f.ko && f.stage === stage)
@@ -185,7 +203,7 @@ function applySync(data, state, FIXTURES){
       const r = state.results[local.id] = state.results[local.id] || {};
       const apiHasRealNames = !isPlaceholderName(m.home) && !isPlaceholderName(m.away);
       const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
-      if(apiHasRealNames && slotIsPlaceholder){ r.koHome = m.home; r.koAway = m.away; koFilled++; }
+      if(apiHasRealNames && slotIsPlaceholder){ r.koHome = toLocalName(m.home); r.koAway = toLocalName(m.away); koFilled++; }
       if(m.date) state.times[local.id] = m.date;
     });
   });
