@@ -1634,6 +1634,9 @@ function applySync(data){
     r.hs=swap?m.awayScore:m.homeScore;
     r.as=swap?m.homeScore:m.awayScore;
     r.winner=r.hs>r.as?'home':r.as>r.hs?'away':(m.penWinner?(norm(m.penWinner)===norm(fxTeams(fx).home)?'home':'away'):'draw');
+    if(m.penWinner && r.hs===r.as){
+      r.pen=norm(m.penWinner)===norm(fxTeams(fx).home)?'home':'away';
+    }
     if(Array.isArray(m.scorers)){
       r.goals=r.goals||{};
       m.scorers.forEach(sc=>{
