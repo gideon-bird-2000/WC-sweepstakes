@@ -286,6 +286,39 @@ table.grp-t tr.qual>td:first-child{border-left:2px solid rgba(200,255,77,.45);pa
   60%{opacity:.85}
   100%{transform:translateY(90vh) rotate(800deg) scaleX(-1);opacity:0}
 }
+
+/* ===== knockout bracket ===== */
+.bracket-wrap{overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch}
+.bracket{display:flex;gap:8px;min-width:max-content;align-items:stretch}
+.bracket-round{display:flex;flex-direction:column;justify-content:space-around;gap:6px;min-width:130px}
+.bracket-round-hd{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);text-align:center;margin-bottom:6px;font-weight:700;white-space:nowrap}
+.bk-match{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:8px;padding:5px 8px;font-size:11px;min-width:120px}
+.bk-match.played{border-color:var(--lime)}
+.bk-team{display:flex;align-items:center;gap:5px;padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-team .bk-fl{font-size:14px;line-height:1;flex:none}
+.bk-team .bk-nm{flex:1;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.bk-team .bk-sc{font-family:'Anton';font-size:14px;flex:none;min-width:14px;text-align:right}
+.bk-team.winner .bk-nm{font-weight:800}
+.bk-team.loser{opacity:.4}
+.bk-vs{height:1px;background:var(--line-soft);margin:2px 0}
+
+/* ===== teams alive ===== */
+.alive-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.alive-card{flex:1;min-width:180px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:11px;padding:14px 16px;text-align:center}
+.alive-card .alive-count{font-family:'Anton';font-size:42px;line-height:1}
+.alive-card .alive-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-top:4px}
+.alive-teams{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:8px}
+.alive-teams .at{font-size:16px;line-height:1;opacity:1}
+.alive-teams .at.elim{opacity:.25;filter:grayscale(1)}
+
+/* ===== player goal leaderboard ===== */
+.pgl-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.pgl-row:last-child{border-bottom:none}
+.pgl-rank{font-family:'Anton';font-size:16px;color:var(--dim);min-width:22px;text-align:right}
+.pgl-rank.gold{color:var(--gold)}
+.pgl-name{flex:1;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pgl-team{font-size:11px;color:var(--muted);min-width:60px}
+.pgl-goals{font-family:'Anton';font-size:22px;min-width:30px;text-align:right}
 </style>
 </head>
 <body>
@@ -780,7 +813,7 @@ function renderDashboard(){
       <div class="legend">${COMPETITORS.map(c=>`<span><span class="dot" style="background:${CRAW[c]}"></span>${c}</span>`).join('')}</div>
       <div class="chart-box">${lineChart(ps)}</div>
     </div>
-    ${groupStandingsHTML()}
+    ${koStageStarted() ? teamsAliveHTML() + bracketHTML() + playerLeaderboardHTML() : groupStandingsHTML()}
     ${recentPanel()}`;
   startCountdown();
 }
@@ -1938,6 +1971,159 @@ function fireConfetti(color){
     c.appendChild(p);
     p.addEventListener('animationend',()=>p.remove());
   }
+}
+
+/* ============================================================
+   KO STAGE DETECTION
+   ============================================================ */
+function koStageStarted(){
+  return FIXTURES.some(f=>f.ko && (isPlayed(f) || (S.results[f.id] && (S.results[f.id].koHome || S.results[f.id].koAway))));
+}
+
+/* ============================================================
+   TEAMS ALIVE TRACKER
+   ============================================================ */
+function getTeamsAlive(){
+  // Collect all teams that appear in KO fixtures (made it out of groups)
+  const koTeams=new Set();
+  const eliminated=new Set();
+  FIXTURES.filter(f=>f.ko).forEach(f=>{
+    const r=S.results[f.id]||{};
+    const h=r.koHome, a=r.koAway;
+    if(h && h!=='TBD' && !/\b(winner|loser|runner|group|3rd|match)\b/i.test(h)) koTeams.add(h);
+    if(a && a!=='TBD' && !/\b(winner|loser|runner|group|3rd|match)\b/i.test(a)) koTeams.add(a);
+    // If played, loser is eliminated
+    if(isPlayed(f)){
+      const {home,away}=fxTeams(f);
+      if(r.winner==='home' && away) eliminated.add(away);
+      else if(r.winner==='away' && home) eliminated.add(home);
+    }
+  });
+  return {koTeams, eliminated};
+}
+function teamsAliveHTML(){
+  const {koTeams, eliminated}=getTeamsAlive();
+  if(!koTeams.size) return '';
+  const cards=COMPETITORS.map(c=>{
+    const myTeams=ALL_TEAMS.filter(t=>teamOwner(t)===c);
+    const inKO=myTeams.filter(t=>koTeams.has(t));
+    const alive=inKO.filter(t=>!eliminated.has(t));
+    const groupElim=myTeams.filter(t=>!koTeams.has(t));
+    const koElim=inKO.filter(t=>eliminated.has(t));
+    const flags=myTeams.map(t=>{
+      const isAlive=koTeams.has(t)&&!eliminated.has(t);
+      return `<span class="at${isAlive?'':' elim'}" title="${t}${isAlive?'':' (eliminated)'}">${FLAG[t]||'⚽'}</span>`;
+    }).join('');
+    return `<div class="alive-card">
+      <div class="alive-count" style="color:${CRAW[c]}">${alive.length}</div>
+      <div class="alive-lbl">teams alive</div>
+      <div style="font-family:'Anton';font-size:16px;color:${CRAW[c]};margin-top:4px">${c}</div>
+      <div class="alive-teams">${flags}</div>
+      <div style="font-size:10px;color:var(--dim);margin-top:6px">${groupElim.length} out in groups · ${koElim.length} knocked out</div>
+    </div>`;
+  }).join('');
+  return `<div class="panel">
+    <h2>Teams Alive</h2>
+    <div class="ph-sub">Faded flags = eliminated · bright = still in</div>
+    <div class="alive-row">${cards}</div>
+  </div>`;
+}
+
+/* ============================================================
+   KNOCKOUT BRACKET TREE
+   ============================================================ */
+function bracketHTML(){
+  const stages=[
+    {name:'Round of 32',key:'Round of 32'},
+    {name:'Round of 16',key:'Round of 16'},
+    {name:'Quarter-finals',key:'Quarter-final'},
+    {name:'Semi-finals',key:'Semi-final'},
+    {name:'Final',key:'Final'}
+  ];
+  const rounds=stages.map(s=>{
+    const matches=FIXTURES.filter(f=>f.ko&&f.stage===s.key)
+      .sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:0)||(a.id-b.id));
+    return {name:s.name, matches};
+  });
+  // Also add 3rd place as a separate mini-section
+  const thirdPlace=FIXTURES.filter(f=>f.ko&&f.stage==='Third place');
+
+  const cols=rounds.map(rd=>{
+    const matchCards=rd.matches.map(f=>{
+      const {home,away}=fxTeams(f);
+      const r=S.results[f.id]||{};
+      const played=isPlayed(f);
+      const owH=teamOwner(home),owA=teamOwner(away);
+      const isTBD=home==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(home);
+      if(isTBD) return `<div class="bk-match"><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div><div class="bk-vs"></div><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div></div>`;
+      const hWin=played&&r.winner==='home';
+      const aWin=played&&r.winner==='away';
+      return `<div class="bk-match${played?' played':''}">
+        <div class="bk-team${hWin?' winner':''}${aWin?' loser':''}">
+          <span class="bk-fl">${FLAG[home]||'⚽'}</span>
+          <span class="bk-nm" style="${owH?'color:'+CRAW[owH]:''}">${home}</span>
+          ${played?`<span class="bk-sc">${r.hs}</span>`:''}
+        </div>
+        <div class="bk-vs"></div>
+        <div class="bk-team${aWin?' winner':''}${hWin?' loser':''}">
+          <span class="bk-fl">${FLAG[away]||'⚽'}</span>
+          <span class="bk-nm" style="${owA?'color:'+CRAW[owA]:''}">${away}</span>
+          ${played?`<span class="bk-sc">${r.as}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="bracket-round"><div class="bracket-round-hd">${rd.name}</div>${matchCards}</div>`;
+  }).join('');
+
+  // Third place match
+  let tpHtml='';
+  if(thirdPlace.length){
+    const f=thirdPlace[0];
+    const {home,away}=fxTeams(f);
+    const r=S.results[f.id]||{};
+    const played=isPlayed(f);
+    const isTBD=home==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(home);
+    if(!isTBD){
+      const owH=teamOwner(home),owA=teamOwner(away);
+      tpHtml=`<div style="margin-top:12px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:2px">3rd Place</div>
+        <div class="bk-match${played?' played':''}" style="max-width:200px;margin-top:6px">
+          <div class="bk-team"><span class="bk-fl">${FLAG[home]||''}</span><span class="bk-nm" style="${owH?'color:'+CRAW[owH]:''}">${home}</span>${played?`<span class="bk-sc">${r.hs}</span>`:''}</div>
+          <div class="bk-vs"></div>
+          <div class="bk-team"><span class="bk-fl">${FLAG[away]||''}</span><span class="bk-nm" style="${owA?'color:'+CRAW[owA]:''}">${away}</span>${played?`<span class="bk-sc">${r.as}</span>`:''}</div>
+        </div>`;
+    }
+  }
+
+  return `<div class="panel">
+    <h2>Knockout Bracket</h2>
+    <div class="ph-sub">Scroll right to see the full path to the final · owner colours on team names</div>
+    <div class="bracket-wrap"><div class="bracket">${cols}</div></div>
+    ${tpHtml}
+  </div>`;
+}
+
+/* ============================================================
+   PLAYER GOAL LEADERBOARD
+   ============================================================ */
+function playerLeaderboardHTML(){
+  if(!S.players||!S.players.length) return '';
+  const rows=S.players.map(p=>({...p,g:playerGoals(p.id)})).sort((a,b)=>b.g-a.g||a.name.localeCompare(b.name));
+  let rank=0, prev=-1;
+  const rowsHtml=rows.map((p,i)=>{
+    if(p.g!==prev){rank=i+1;prev=p.g;}
+    return `<div class="pgl-row">
+      <span class="pgl-rank${rank===1&&p.g>0?' gold':''}">${rank}</span>
+      <span class="dot" style="background:${CRAW[p.owner]};width:8px;height:8px;border-radius:50%;flex:none"></span>
+      <span class="pgl-name">${p.g>0&&rank===1?'🔥 ':''}${p.name}</span>
+      <span class="pgl-team">${FLAG[p.team]||''} ${p.team}</span>
+      <span class="pgl-goals" style="color:${p.g>0?CRAW[p.owner]:'var(--dim)'}">${p.g}</span>
+    </div>`;
+  }).join('');
+  return `<div class="panel">
+    <h2>Player Golden Boot</h2>
+    <div class="ph-sub">All 15 drafted players ranked by goals</div>
+    ${rowsHtml}
+  </div>`;
 }
 
 /* boot */
