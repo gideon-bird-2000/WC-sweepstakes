@@ -300,6 +300,39 @@ async function fetchApiData(){
       scorers,
     };
   });
+
+  // Infer penalty winners for drawn KO matches
+  const KO_STAGES = ["Round of 32","Round of 16","Quarter-final","Semi-final","Final","Third place"];
+  const nextStage = { "Round of 32":"Round of 16", "Round of 16":"Quarter-final", "Quarter-final":"Semi-final", "Semi-final":"Final" };
+  const isPlaceholderLabel = n => !n || /\b(winner|loser|runner|group|3rd|match)\b/i.test(n);
+
+  out.forEach(m => {
+    if(!m.finished || m.homeScore==null) return;
+    if(!KO_STAGES.includes(m.stage)) return;
+    if(m.homeScore !== m.awayScore) return;
+    if(isPlaceholderLabel(m.home) || isPlaceholderLabel(m.away)) return;
+
+    const ns = nextStage[m.stage];
+    const searchStages = ns ? [ns] : [];
+    if(m.stage === "Semi-final") searchStages.push("Third place");
+
+    for(const laterMatch of out){
+      if(!searchStages.includes(laterMatch.stage)) continue;
+      const lh = (laterMatch.home||"").toLowerCase();
+      const la = (laterMatch.away||"").toLowerCase();
+      if(isPlaceholderLabel(laterMatch.home) && isPlaceholderLabel(laterMatch.away)) continue;
+
+      const homeInLater = (!isPlaceholderLabel(laterMatch.home) && lh===m.home.toLowerCase()) ||
+                          (!isPlaceholderLabel(laterMatch.away) && la===m.home.toLowerCase());
+      const awayInLater = (!isPlaceholderLabel(laterMatch.home) && lh===m.away.toLowerCase()) ||
+                          (!isPlaceholderLabel(laterMatch.away) && la===m.away.toLowerCase());
+
+      if(homeInLater && !awayInLater){ m.penWinner=m.home; break; }
+      if(awayInLater && !homeInLater){ m.penWinner=m.away; break; }
+    }
+  });
+
+  return out;
 }
 
 /* ============================================================
