@@ -201,9 +201,14 @@ function applySync(data, state, FIXTURES){
       const local = localList[i];
       if(!local) return;
       const r = state.results[local.id] = state.results[local.id] || {};
-      const apiHasRealNames = !isPlaceholderName(m.home) && !isPlaceholderName(m.away);
-      const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
-      if(apiHasRealNames && slotIsPlaceholder){ r.koHome = toLocalName(m.home); r.koAway = toLocalName(m.away); koFilled++; }
+      let changed = false;
+      if(!isPlaceholderName(m.home) && isPlaceholderName(r.koHome)){
+        r.koHome = toLocalName(m.home); changed = true;
+      }
+      if(!isPlaceholderName(m.away) && isPlaceholderName(r.koAway)){
+        r.koAway = toLocalName(m.away); changed = true;
+      }
+      if(changed) koFilled++;
       if(m.date) state.times[local.id] = m.date;
     });
   });
