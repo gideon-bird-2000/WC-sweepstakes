@@ -760,6 +760,7 @@ function renderDashboard(){
       <div class="mini">
         <div><span class="k">Team wins</span><span class="v tnum">${d.win}</span></div>
         <div><span class="k">Player goals</span><span class="v tnum">${d.goals}</span></div>
+        <div><span class="k">Games played</span><span class="v tnum">${d.rec.played}</span></div>
       </div>
       <div class="breakdown">Teams record &nbsp;<b>${d.rec.W}W</b> · ${d.rec.D}D · ${d.rec.L}L &nbsp;|&nbsp; GF ${d.rec.GF} / GA ${d.rec.GA}</div>
     </div>`).join('');
@@ -1542,6 +1543,10 @@ function applySync(data){
     (apiByStage[stage]=apiByStage[stage]||[]).push(m);
   });
   let koFilled=0;
+  // A bracket slot is "placeholder" if empty OR contains label words like "Winner",
+  // "Runner-up", "Loser", "Group X", or "Match" — these come from API entries that
+  // haven't resolved yet. Real team names trigger overwrites.
+  const isPlaceholderName = s => !s || /\b(winner|runner-?up|loser|group|3rd)\b/i.test(s) || /^match\s/i.test(s);
   Object.keys(apiByStage).forEach(stage=>{
     const apiList=apiByStage[stage].slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
     const localList=FIXTURES.filter(f=>f.ko&&f.stage===stage)
@@ -1550,7 +1555,11 @@ function applySync(data){
       const local=localList[i];
       if(!local)return;
       const r=S.results[local.id]=S.results[local.id]||{};
-      if(!r.koHome&&!r.koAway){
+      // Only fill from API if API has REAL team names, not its own placeholder labels
+      const apiHasRealNames = !isPlaceholderName(m.home) && !isPlaceholderName(m.away);
+      // Overwrite if our stored slot is empty OR currently holds a placeholder
+      const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
+      if(apiHasRealNames && slotIsPlaceholder){
         r.koHome=m.home;
         r.koAway=m.away;
         koFilled++;
