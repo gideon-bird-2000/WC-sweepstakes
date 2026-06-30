@@ -1608,15 +1608,15 @@ function applySync(data){
       const local=localList[i];
       if(!local)return;
       const r=S.results[local.id]=S.results[local.id]||{};
-      // Only fill from API if API has REAL team names, not its own placeholder labels
-      const apiHasRealNames = !isPlaceholderName(m.home) && !isPlaceholderName(m.away);
-      // Overwrite if our stored slot is empty OR currently holds a placeholder
-      const slotIsPlaceholder = isPlaceholderName(r.koHome) && isPlaceholderName(r.koAway);
-      if(apiHasRealNames && slotIsPlaceholder){
-        r.koHome=toLocalName(m.home);
-        r.koAway=toLocalName(m.away);
-        koFilled++;
+      // Fill each team independently: only overwrite if API has a real name and stored value is placeholder
+      let changed=false;
+      if(!isPlaceholderName(m.home) && isPlaceholderName(r.koHome)){
+        r.koHome=toLocalName(m.home); changed=true;
       }
+      if(!isPlaceholderName(m.away) && isPlaceholderName(r.koAway)){
+        r.koAway=toLocalName(m.away); changed=true;
+      }
+      if(changed) koFilled++;
       // also record the API kickoff datetime onto this KO slot (positional)
       if(m.date) S.times[local.id]=m.date;
     });
@@ -2077,8 +2077,9 @@ function bracketHTML(){
       const r=S.results[f.id]||{};
       const played=isPlayed(f);
       const owH=teamOwner(home),owA=teamOwner(away);
-      const isTBD=home==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(home);
-      if(isTBD) return `<div class="bk-match"><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div><div class="bk-vs"></div><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div></div>`;
+      const homeTBD=home==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(home);
+      const awayTBD=away==='TBD'||/\b(winner|loser|runner|group|3rd|match)\b/i.test(away);
+      if(homeTBD&&awayTBD) return `<div class="bk-match"><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div><div class="bk-vs"></div><div class="bk-team"><span class="bk-nm" style="color:var(--dim);font-weight:400">TBD</span></div></div>`;
       const hWin=played&&r.winner==='home';
       const aWin=played&&r.winner==='away';
       const winOwner=hWin?owH:(aWin?owA:null);
