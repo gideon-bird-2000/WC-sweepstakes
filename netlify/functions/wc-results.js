@@ -105,9 +105,44 @@ exports.handler = async function () {
         finished,
         stage,
         date,
-        penWinner: null, // worldcup26.ir doesn't expose pen winner explicitly
+        penWinner: null,
         scorers,
       };
+    });
+
+    // Infer penalty winners for drawn KO matches.
+    // In knockout rounds a draw = penalties happened. Check which team advanced
+    // by looking at whether either team appears in a later round's fixtures.
+    const KO_STAGES = ["Round of 32","Round of 16","Quarter-final","Semi-final","Final","Third place"];
+    const nextStage = { "Round of 32":"Round of 16", "Round of 16":"Quarter-final", "Quarter-final":"Semi-final", "Semi-final":"Final" };
+    const isPlaceholder = n => !n || /\b(winner|loser|runner|group|3rd|match)\b/i.test(n);
+
+    out.forEach(m => {
+      if (!m.finished || m.homeScore == null) return;
+      if (!KO_STAGES.includes(m.stage)) return;
+      if (m.homeScore !== m.awayScore) return; // not a draw, no pens needed
+      if (isPlaceholder(m.home) || isPlaceholder(m.away)) return;
+
+      // Search all later fixtures for either team appearing
+      const ns = nextStage[m.stage];
+      // Also check "Third place" for semi-final losers
+      const searchStages = ns ? [ns] : [];
+      if (m.stage === "Semi-final") searchStages.push("Third place");
+
+      for (const laterMatch of out) {
+        if (!searchStages.includes(laterMatch.stage)) continue;
+        const lh = (laterMatch.home || "").toLowerCase();
+        const la = (laterMatch.away || "").toLowerCase();
+        if (isPlaceholder(laterMatch.home) && isPlaceholder(laterMatch.away)) continue;
+
+        const homeInLater = !isPlaceholder(laterMatch.home) && lh === m.home.toLowerCase() ||
+                            !isPlaceholder(laterMatch.away) && la === m.home.toLowerCase();
+        const awayInLater = !isPlaceholder(laterMatch.home) && lh === m.away.toLowerCase() ||
+                            !isPlaceholder(laterMatch.away) && la === m.away.toLowerCase();
+
+        if (homeInLater && !awayInLater) { m.penWinner = m.home; break; }
+        if (awayInLater && !homeInLater) { m.penWinner = m.away; break; }
+      }
     });
 
     return json(200, out);
