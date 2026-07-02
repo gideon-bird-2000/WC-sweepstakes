@@ -115,27 +115,37 @@ function normName(s) {
   return APIFB_ALIASES[base] || base;
 }
 
-async function enrichScorers(out, apiKey) {
-  if (!apiKey) return;
+async function enrichScorers(out, apiKey, debug) {
+  const log = [];
+  if (!apiKey) { log.push("NO APIFOOTBALL_KEY env var"); return log; }
   const headers = { "x-apisports-key": apiKey };
 
   try {
     // 1. Get recently finished fixtures from API-Football
+    log.push("Fetching API-Football fixtures...");
     const fxRes = await fetch(`${APIFB_URL}/fixtures?league=1&season=2026&last=10`, { headers });
-    if (!fxRes.ok) return;
+    if (!fxRes.ok) { log.push(`API-Football fixtures returned ${fxRes.status}`); return log; }
     const fxData = await fxRes.json();
-    const fixtures = (fxData.response || []).filter(f => APIFB_FINISHED.includes(f.fixture?.status?.short));
+    const allFx = fxData.response || [];
+    log.push(`API-Football returned ${allFx.length} fixtures`);
+    if (fxData.errors && Object.keys(fxData.errors).length) log.push(`API errors: ${JSON.stringify(fxData.errors)}`);
+    const fixtures = allFx.filter(f => APIFB_FINISHED.includes(f.fixture?.status?.short));
+    log.push(`${fixtures.length} are finished (FT/AET/PEN)`);
 
     // Sort most recent first, cap at MAX_EVENTS
     const recent = fixtures
       .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
       .slice(0, MAX_EVENTS);
+    log.push(`Processing ${recent.length} most recent for events`);
 
     // 2. For each, fetch events and match to our output array
     await Promise.all(recent.map(async apiFx => {
+      const fxHome = apiFx.teams?.home?.name || "?";
+      const fxAway = apiFx.teams?.away?.name || "?";
+      log.push(`Fixture: ${fxHome} vs ${fxAway} (id=${apiFx.fixture.id})`);
       try {
         const evRes = await fetch(`${APIFB_URL}/fixtures/events?fixture=${apiFx.fixture.id}`, { headers });
-        if (!evRes.ok) return;
+        if (!evRes.ok) { log.push(`  Events returned ${evRes.status}`); return; }
         const evData = await evRes.json();
 
         // Build scorer map from events
@@ -147,6 +157,7 @@ async function enrichScorers(out, apiKey) {
           }
         });
         const scorers = Object.entries(goals).map(([name, count]) => ({ name, team: "", count }));
+        log.push(`  ${scorers.length} scorers: ${scorers.map(s=>s.name+'('+s.count+')').join(', ')}`);
         if (!scorers.length) return;
 
         // Also check for penalty winner from API-Football
@@ -157,8 +168,8 @@ async function enrichScorers(out, apiKey) {
         }
 
         // Find matching match in our output by team name
-        const apiHome = normName(apiFx.teams.home.name);
-        const apiAway = normName(apiFx.teams.away.name);
+        const apiHome = normName(fxHome);
+        const apiAway = normName(fxAway);
         const match = out.find(m => {
           const h = normName(m.home), a = normName(m.away);
           return (h === apiHome && a === apiAway) || (h === apiAway && a === apiHome);
@@ -166,10 +177,14 @@ async function enrichScorers(out, apiKey) {
         if (match) {
           match.scorers = scorers;
           if (apiFbPenWinner) match.penWinner = apiFbPenWinner;
+          log.push(`  Matched to: ${match.home} vs ${match.away} — scorers replaced`);
+        } else {
+          log.push(`  NO MATCH found. apiHome=${apiHome}, apiAway=${apiAway}`);
         }
-      } catch { /* skip this fixture on error */ }
+      } catch (e) { log.push(`  Event fetch error: ${e.message}`); }
     }));
-  } catch { /* API-Football unavailable, worldcup26.ir scorers used as fallback */ }
+  } catch (e) { log.push(`Top-level error: ${e.message}`); }
+  return log;
 }
 
 // ---- Handler ----
@@ -178,18 +193,21 @@ exports.handler = async function (event) {
     const out = await fetchWorldcup26();
     inferPenaltyWinners(out);
 
-    // Only enrich scorers when ?scorers=1 is passed (server cron)
-    // This keeps client-side auto-sync from burning API-Football quota
     const params = event.queryStringParameters || {};
+    let debugLog = null;
     if (params.scorers === "1") {
       const apiKey = process.env.APIFOOTBALL_KEY;
-      await enrichScorers(out, apiKey);
+      debugLog = await enrichScorers(out, apiKey, params.debug === "1");
     }
+
+    const body = params.debug === "1"
+      ? JSON.stringify({ debugLog, sampleMatch: out.find(m => m.home === "England" && m.stage === "Round of 32") }, null, 2)
+      : JSON.stringify(out);
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      body: JSON.stringify(out),
+      body,
     };
   } catch (err) {
     return {
