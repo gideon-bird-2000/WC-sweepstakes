@@ -249,8 +249,12 @@ function applySync(data, state, FIXTURES){
     }
     if(Array.isArray(m.scorers)){
       r.goals = r.goals || {};
+      const aliases = state.scorerAliases || {};
       m.scorers.forEach(sc => {
-        const p = state.players.find(pl => namesMatch(pl.name, sc.name));
+        let p = null;
+        const aliasKey = Object.keys(aliases).find(k => k.toLowerCase() === sc.name.toLowerCase());
+        if(aliasKey) p = state.players.find(pl => pl.id === aliases[aliasKey]);
+        if(!p) p = state.players.find(pl => namesMatch(pl.name, sc.name));
         if(p) r.goals[p.id] = sc.count || 1;
       });
     }
