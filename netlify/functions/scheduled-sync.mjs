@@ -1,6 +1,7 @@
 // netlify/functions/scheduled-sync.mjs
-// Scheduled function: runs every 5 minutes, fetches latest match data from
-// worldcup26.ir (free, no API key, includes scorers) and applies it to shared state.
+// Scheduled function: runs every hour, calls wc-results (which fetches from
+// worldcup26.ir for scores + API-Football for clean scorer names), then applies
+// results to the shared state in Netlify Blobs.
 //
 // Required env vars: BLOBS_SITE_ID, BLOBS_TOKEN
 //
@@ -377,8 +378,8 @@ export default async () => {
     if(!stateText) return Response.json({ok:false, reason:"no state in Blobs yet"});
     const state = JSON.parse(stateText);
 
-    // Call the wc-results function (single source of truth for API data + penalty inference)
-    const apiRes = await fetch(`${siteURL}/.netlify/functions/wc-results`);
+    // Call wc-results with ?scorers=1 to enable API-Football scorer enrichment
+    const apiRes = await fetch(`${siteURL}/.netlify/functions/wc-results?scorers=1`);
     if(!apiRes.ok) throw new Error(`wc-results returned ${apiRes.status}`);
     const apiData = await apiRes.json();
     if(!Array.isArray(apiData)) throw new Error('wc-results did not return an array');
@@ -400,4 +401,4 @@ export default async () => {
   }
 };
 
-export const config = { schedule: "*/5 * * * *" };
+export const config = { schedule: "@hourly" };
