@@ -1,160 +1,201 @@
 // netlify/functions/wc-results.js
-// Fetches WC 2026 results from worldcup26.ir — free, no API key, includes scorers.
-// Returns shape matching what applySync() expects in index.html.
+// HYBRID: worldcup26.ir for scores/brackets + API-Football for clean scorer names.
+// worldcup26.ir = free, unlimited, but garbles some scorer names via Persian transliteration.
+// API-Football = free, 100 req/day, clean English scorer names.
+//
+// Pass ?scorers=1 to enable API-Football scorer enrichment (server cron only).
+// Without it, returns worldcup26.ir data as-is (used by client auto-sync).
+//
+// ENV VARS: APIFOOTBALL_KEY (optional — if missing, scorer enrichment is skipped)
 
-const API_URL = "https://worldcup26.ir/get/games";
+const WC26_URL = "https://worldcup26.ir/get/games";
+const APIFB_URL = "https://v3.football.api-sports.io";
 
-// Resolve TBD knockout team labels into actual stage names matching local fixtures.
-// worldcup26.ir uses group="R32"/"R16"/"QF"/"SF"/"FINAL"/"3RD"; map to our stages.
 const STAGE_MAP = {
-  R32:   "Round of 32",
-  R16:   "Round of 16",
-  QF:    "Quarter-final",
-  SF:    "Semi-final",
-  "3RD": "Third place",
-  FINAL: "Final",
+  R32: "Round of 32", R16: "Round of 16", QF: "Quarter-final",
+  SF: "Semi-final", "3RD": "Third place", FINAL: "Final",
 };
 
-// Parse the home_scorers/away_scorers field. Examples:
-//   "{\"V. Júnior 32'\"}"
-//   "{\"Felix Nmecha 7'\",\"K. Havertz 45'+5'(p)\",\"D. Bobadilla 7'(OG)\"}"
-//   "{“J. Quiñones 9'”,”R. Jiménez 67'”}"  (fancy quotes — match 1 quirk)
-//   "null"  or  null
+// ---- worldcup26.ir scorer parser ----
 function parseScorers(raw) {
   if (!raw || raw === "null" || raw === null) return [];
-  // Strip enclosing { }
   let s = String(raw).trim().replace(/^\{/, "").replace(/\}$/, "");
-  // Normalize fancy unicode quotes to ASCII
   s = s.replace(/[\u201C\u201D\u2018\u2019]/g, '"');
-  // Split on quote-comma-quote, then strip remaining quotes
   const parts = s.split(/"\s*,\s*"/).map(p => p.replace(/^"|"$/g, "").trim()).filter(Boolean);
-  // Each part looks like: "V. Júnior 32'" or "K. Havertz 45'+5'(p)" or "D. Bobadilla 7'(OG)"
   return parts.map(p => {
     const isOG = /\(OG\)/i.test(p);
-    // Strip trailing minute and annotations. Handles all observed formats:
-    //   " 32'"  " 45'+5'(p)"  " 7'(OG)"  " 90+"  " 90+3"  " 89'(OG)"
-    // Apostrophes are optional since worldcup26.ir sometimes drops them.
     const name = p.replace(/\s*\d+'?(\+\d*'?)?\s*(\(OG\)|\(p\))?\s*$/i, "").trim();
     return { name, isOG };
   });
 }
-
-// Aggregate parsed scorers, EXCLUDING own goals (they don't help the scorer's owner)
 function aggregateScorers(parsed) {
   const counts = {};
-  parsed.forEach(p => {
-    if (p.isOG) return;
-    if (!p.name) return;
-    counts[p.name] = (counts[p.name] || 0) + 1;
-  });
+  parsed.forEach(p => { if (p.isOG || !p.name) return; counts[p.name] = (counts[p.name] || 0) + 1; });
   return Object.entries(counts).map(([name, count]) => ({ name, team: "", count }));
 }
 
-exports.handler = async function () {
-  try {
-    const res = await fetch(API_URL, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      return json(502, { error: `worldcup26.ir API error ${res.status}` });
+// ---- Penalty winner inference ----
+const KO_STAGES = ["Round of 32", "Round of 16", "Quarter-final", "Semi-final", "Final", "Third place"];
+const NEXT_STAGE = { "Round of 32": "Round of 16", "Round of 16": "Quarter-final", "Quarter-final": "Semi-final", "Semi-final": "Final" };
+const isPlaceholder = n => !n || /\b(winner|loser|runner|group|3rd|match)\b/i.test(n);
+
+function inferPenaltyWinners(out) {
+  out.forEach(m => {
+    if (!m.finished || m.homeScore == null) return;
+    if (!KO_STAGES.includes(m.stage)) return;
+    if (m.homeScore !== m.awayScore) return;
+    if (isPlaceholder(m.home) || isPlaceholder(m.away)) return;
+    const ns = NEXT_STAGE[m.stage];
+    const searchStages = ns ? [ns] : [];
+    if (m.stage === "Semi-final") searchStages.push("Third place");
+    for (const later of out) {
+      if (!searchStages.includes(later.stage)) continue;
+      if (isPlaceholder(later.home) && isPlaceholder(later.away)) continue;
+      const lh = (later.home || "").toLowerCase(), la = (later.away || "").toLowerCase();
+      const homeIn = (!isPlaceholder(later.home) && lh === m.home.toLowerCase()) ||
+                     (!isPlaceholder(later.away) && la === m.home.toLowerCase());
+      const awayIn = (!isPlaceholder(later.home) && lh === m.away.toLowerCase()) ||
+                     (!isPlaceholder(later.away) && la === m.away.toLowerCase());
+      if (homeIn && !awayIn) { m.penWinner = m.home; break; }
+      if (awayIn && !homeIn) { m.penWinner = m.away; break; }
     }
-    const data = await res.json();
-    const games = Array.isArray(data.games) ? data.games : [];
+  });
+}
 
-    const out = games.map(g => {
-      const finished = String(g.finished).toUpperCase() === "TRUE";
+// ---- Fetch worldcup26.ir ----
+async function fetchWorldcup26() {
+  const res = await fetch(WC26_URL, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`worldcup26.ir error ${res.status}`);
+  const data = await res.json();
+  const games = Array.isArray(data.games) ? data.games : [];
 
-      // For finished games we have actual team names; for KO TBDs we have labels
-      const home = g.home_team_name_en || g.home_team_label || "";
-      const away = g.away_team_name_en || g.away_team_label || "";
+  return games.map(g => {
+    const finished = String(g.finished).toUpperCase() === "TRUE";
+    const home = g.home_team_name_en || g.home_team_label || "";
+    const away = g.away_team_name_en || g.away_team_label || "";
+    let stage = "";
+    if (g.type === "group") stage = "Group Stage";
+    else if (STAGE_MAP[g.group]) stage = STAGE_MAP[g.group];
+    else stage = g.group || "";
+    const homeScorers = aggregateScorers(parseScorers(g.home_scorers));
+    const awayScorers = aggregateScorers(parseScorers(g.away_scorers));
+    let date = null;
+    if (g.local_date) {
+      const m = g.local_date.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
+      if (m) { const [, mo, da, yr, hr, mn] = m; date = `${yr}-${mo}-${da}T${hr}:${mn}:00Z`; }
+    }
+    return {
+      home, away,
+      homeScore: finished ? parseInt(g.home_score, 10) : null,
+      awayScore: finished ? parseInt(g.away_score, 10) : null,
+      finished, stage, date, penWinner: null,
+      scorers: [...homeScorers, ...awayScorers],
+    };
+  });
+}
 
-      // Stage: groups use "Group X" style; KO uses STAGE_MAP
-      let stage = "";
-      if (g.type === "group") {
-        stage = "Group Stage";
-      } else if (STAGE_MAP[g.group]) {
-        stage = STAGE_MAP[g.group];
-      } else {
-        stage = g.group || "";
-      }
+// ---- Enrich scorers from API-Football (clean names) ----
+// Fetches last N finished fixtures, pulls events for each, replaces scorer data.
+// Budget: 1 fixtures call + MAX_EVENTS event calls per invocation.
+const MAX_EVENTS = 3; // 1 + 3 = 4 calls × 24 hours = 96/day (under 100 limit)
+const APIFB_FINISHED = ["FT", "AET", "PEN"];
 
-      // Parse scorers, drop own goals
-      const homeScorers = aggregateScorers(parseScorers(g.home_scorers));
-      const awayScorers = aggregateScorers(parseScorers(g.away_scorers));
-      const scorers = [...homeScorers, ...awayScorers];
+const APIFB_ALIASES = {
+  'korearepublic': 'southkorea', 'republicofkorea': 'southkorea',
+  'czechrepublic': 'czechia', 'turkey': 'turkiye',
+  'caboverde': 'capeverde', 'cotedivoire': 'cotedivoire',
+  'usa': 'unitedstates', 'unitedstatesofamerica': 'unitedstates',
+  'ivorycoast': 'cotedivoire', 'congodr': 'drcongo',
+  'democraticrepublicofthecongo': 'drcongo',
+  'bosniaandherzegovina': 'bosniaherzegovina',
+  'iranislamicrepublic': 'iran', 'iriran': 'iran',
+};
+function normName(s) {
+  const base = (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]/g, "");
+  return APIFB_ALIASES[base] || base;
+}
 
-      // Date: convert "06/13/2026 18:00" (US format) to ISO. Assume UTC for sync purposes;
-      // local kickoff times are already baked into index.html's KICKOFFS const so this only
-      // affects the applySync time-update step which the client tolerates.
-      let date = null;
-      if (g.local_date) {
-        const m = g.local_date.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-        if (m) {
-          const [, mo, da, yr, hr, mn] = m;
-          date = `${yr}-${mo}-${da}T${hr}:${mn}:00Z`;
+async function enrichScorers(out, apiKey) {
+  if (!apiKey) return;
+  const headers = { "x-apisports-key": apiKey };
+
+  try {
+    // 1. Get recently finished fixtures from API-Football
+    const fxRes = await fetch(`${APIFB_URL}/fixtures?league=1&season=2026&last=10`, { headers });
+    if (!fxRes.ok) return;
+    const fxData = await fxRes.json();
+    const fixtures = (fxData.response || []).filter(f => APIFB_FINISHED.includes(f.fixture?.status?.short));
+
+    // Sort most recent first, cap at MAX_EVENTS
+    const recent = fixtures
+      .sort((a, b) => new Date(b.fixture.date) - new Date(a.fixture.date))
+      .slice(0, MAX_EVENTS);
+
+    // 2. For each, fetch events and match to our output array
+    await Promise.all(recent.map(async apiFx => {
+      try {
+        const evRes = await fetch(`${APIFB_URL}/fixtures/events?fixture=${apiFx.fixture.id}`, { headers });
+        if (!evRes.ok) return;
+        const evData = await evRes.json();
+
+        // Build scorer map from events
+        const goals = {};
+        (evData.response || []).forEach(e => {
+          if (e.type === "Goal" && e.detail !== "Missed Penalty" && e.detail !== "Own Goal") {
+            const nm = e.player?.name;
+            if (nm) goals[nm] = (goals[nm] || 0) + 1;
+          }
+        });
+        const scorers = Object.entries(goals).map(([name, count]) => ({ name, team: "", count }));
+        if (!scorers.length) return;
+
+        // Also check for penalty winner from API-Football
+        let apiFbPenWinner = null;
+        if (apiFx.fixture.status.short === "PEN") {
+          if (apiFx.teams.home.winner) apiFbPenWinner = apiFx.teams.home.name;
+          else if (apiFx.teams.away.winner) apiFbPenWinner = apiFx.teams.away.name;
         }
-      }
 
-      // Score: strings -> ints, only for finished
-      const hs = finished ? parseInt(g.home_score, 10) : null;
-      const as = finished ? parseInt(g.away_score, 10) : null;
+        // Find matching match in our output by team name
+        const apiHome = normName(apiFx.teams.home.name);
+        const apiAway = normName(apiFx.teams.away.name);
+        const match = out.find(m => {
+          const h = normName(m.home), a = normName(m.away);
+          return (h === apiHome && a === apiAway) || (h === apiAway && a === apiHome);
+        });
+        if (match) {
+          match.scorers = scorers;
+          if (apiFbPenWinner) match.penWinner = apiFbPenWinner;
+        }
+      } catch { /* skip this fixture on error */ }
+    }));
+  } catch { /* API-Football unavailable, worldcup26.ir scorers used as fallback */ }
+}
 
-      return {
-        home,
-        away,
-        homeScore: hs,
-        awayScore: as,
-        finished,
-        stage,
-        date,
-        penWinner: null,
-        scorers,
-      };
-    });
+// ---- Handler ----
+exports.handler = async function (event) {
+  try {
+    const out = await fetchWorldcup26();
+    inferPenaltyWinners(out);
 
-    // Infer penalty winners for drawn KO matches.
-    // In knockout rounds a draw = penalties happened. Check which team advanced
-    // by looking at whether either team appears in a later round's fixtures.
-    const KO_STAGES = ["Round of 32","Round of 16","Quarter-final","Semi-final","Final","Third place"];
-    const nextStage = { "Round of 32":"Round of 16", "Round of 16":"Quarter-final", "Quarter-final":"Semi-final", "Semi-final":"Final" };
-    const isPlaceholder = n => !n || /\b(winner|loser|runner|group|3rd|match)\b/i.test(n);
+    // Only enrich scorers when ?scorers=1 is passed (server cron)
+    // This keeps client-side auto-sync from burning API-Football quota
+    const params = event.queryStringParameters || {};
+    if (params.scorers === "1") {
+      const apiKey = process.env.APIFOOTBALL_KEY;
+      await enrichScorers(out, apiKey);
+    }
 
-    out.forEach(m => {
-      if (!m.finished || m.homeScore == null) return;
-      if (!KO_STAGES.includes(m.stage)) return;
-      if (m.homeScore !== m.awayScore) return; // not a draw, no pens needed
-      if (isPlaceholder(m.home) || isPlaceholder(m.away)) return;
-
-      // Search all later fixtures for either team appearing
-      const ns = nextStage[m.stage];
-      // Also check "Third place" for semi-final losers
-      const searchStages = ns ? [ns] : [];
-      if (m.stage === "Semi-final") searchStages.push("Third place");
-
-      for (const laterMatch of out) {
-        if (!searchStages.includes(laterMatch.stage)) continue;
-        const lh = (laterMatch.home || "").toLowerCase();
-        const la = (laterMatch.away || "").toLowerCase();
-        if (isPlaceholder(laterMatch.home) && isPlaceholder(laterMatch.away)) continue;
-
-        const homeInLater = !isPlaceholder(laterMatch.home) && lh === m.home.toLowerCase() ||
-                            !isPlaceholder(laterMatch.away) && la === m.home.toLowerCase();
-        const awayInLater = !isPlaceholder(laterMatch.home) && lh === m.away.toLowerCase() ||
-                            !isPlaceholder(laterMatch.away) && la === m.away.toLowerCase();
-
-        if (homeInLater && !awayInLater) { m.penWinner = m.home; break; }
-        if (awayInLater && !homeInLater) { m.penWinner = m.away; break; }
-      }
-    });
-
-    return json(200, out);
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+      body: JSON.stringify(out),
+    };
   } catch (err) {
-    return json(502, { error: String(err) });
+    return {
+      statusCode: 502,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: String(err) }),
+    };
   }
 };
-
-function json(status, body) {
-  return {
-    statusCode: status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-    body: JSON.stringify(body),
-  };
-}
