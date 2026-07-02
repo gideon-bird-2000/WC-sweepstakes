@@ -632,6 +632,7 @@ function blankState(){
     times:{},                         // fixtureId -> ISO datetime string (populated by sync)
     teamDraftDone:false,
     playerDraftDone:false,
+    scorerAliases:{},              // garbled scorer name -> drafted player id
     _pid:1
   };
 }
@@ -1283,6 +1284,23 @@ function renderAdmin(){
     </div>
 
     <div class="panel">
+      <h2>Scorer Aliases</h2>
+      <div class="ph-sub">Map garbled API names to your drafted players so goals auto-credit correctly</div>
+      <div class="note">The data source sometimes garbles scorer names (e.g. "Hri Kin" instead of "H. Kane"). Add an alias here and every future sync will credit the right player automatically.</div>
+      <div id="aliasList"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px">
+        <div class="field" style="flex:2;min-width:180px"><label>Garbled name (from API)</label>
+          <input id="aliasFrom" placeholder='e.g. Hri Kin' style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;width:100%"></div>
+        <div class="field" style="flex:2;min-width:180px"><label>Maps to drafted player</label>
+          <select id="aliasTo" style="background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 12px;font-family:inherit;font-size:13px;width:100%">
+            ${(S.players||[]).map(p=>`<option value="${p.id}">${p.name} (${p.team} · ${p.owner})</option>`).join('')}
+          </select></div>
+        <div class="field" style="flex:none"><label>&nbsp;</label>
+          <button class="btn sm" id="addAliasBtn">+ Add alias</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>Back up & Share</h2>
       <div class="ph-sub">Everything lives in this browser — export to move it between devices or share with Ant & Alex</div>
       <div class="io-row">
@@ -1308,9 +1326,18 @@ function renderAdmin(){
     const out=document.getElementById('nameTestResult');
     if(!q){ out.innerHTML='<span style="color:var(--dim)">Type a name above first.</span>'; return; }
     if(!S.players||!S.players.length){ out.innerHTML='<span style="color:var(--dim)">No drafted players yet.</span>'; return; }
+    const aliases=S.scorerAliases||{};
+    const aliasKey=Object.keys(aliases).find(k=>k.toLowerCase()===q.toLowerCase());
+    if(aliasKey){
+      const p=playerById(aliases[aliasKey]);
+      if(p){
+        out.innerHTML=`<span style="color:var(--lime)">✓ "${q}" matches <b>${p.name}</b> via alias</span> (${p.team}, drafted by <b style="color:${CRAW[p.owner]}">${p.owner}</b>)`;
+        return;
+      }
+    }
     const hits=S.players.filter(pl=>namesMatch(pl.name, q));
     if(hits.length===0){
-      out.innerHTML=`<span style="color:var(--orange)">✗ "${q}" would <b>not</b> match any drafted player.</span> If this name should match someone, you'd need to log their goals manually in Result Logging.`;
+      out.innerHTML=`<span style="color:var(--orange)">✗ "${q}" would <b>not</b> match any drafted player.</span> Add a scorer alias below to map this name to the right player.`;
     } else if(hits.length===1){
       const p=hits[0];
       out.innerHTML=`<span style="color:var(--lime)">✓ "${q}" matches <b>${p.name}</b></span> (${p.team}, drafted by <b style="color:${CRAW[p.owner]}">${p.owner}</b>)`;
@@ -1319,6 +1346,43 @@ function renderAdmin(){
       out.innerHTML=`<span style="color:var(--orange)">⚠ "${q}" matches <b>${hits.length}</b> drafted players — ambiguous:</span><br>${lines}<br><span style="font-size:11px;color:var(--dim)">In a live sync, the first match would get the goal credit.</span>`;
     }
   };
+  // Alias editor
+  renderAliasList();
+  const addAl=document.getElementById('addAliasBtn');
+  if(addAl) addAl.onclick=()=>{
+    const from=(document.getElementById('aliasFrom').value||'').trim();
+    const to=parseInt(document.getElementById('aliasTo').value,10);
+    if(!from){toast('Enter the garbled name');return;}
+    if(!to&&to!==0){toast('Select a player');return;}
+    S.scorerAliases=S.scorerAliases||{};
+    S.scorerAliases[from]=to;
+    save();
+    toast('Alias added');
+  };
+}
+function renderAliasList(){
+  const el=document.getElementById('aliasList');
+  if(!el) return;
+  const aliases=S.scorerAliases||{};
+  const keys=Object.keys(aliases);
+  if(!keys.length){
+    el.innerHTML='<div style="color:var(--dim);font-size:12px;margin:8px 0">No aliases yet. Add one below when you spot a garbled name.</div>';
+    return;
+  }
+  el.innerHTML=keys.map(k=>{
+    const p=playerById(aliases[k]);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px">
+      <span style="color:var(--orange);font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">"${k}"</span>
+      <span style="color:var(--dim)">→</span>
+      <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${p?`<span style="color:${CRAW[p.owner]};font-weight:700">${p.name}</span> <span style="color:var(--dim)">(${p.team})</span>`:'<span style="color:var(--dim)">Unknown player</span>'}</span>
+      <button class="btn ghost sm" data-del-alias="${k}" style="flex:none">✕</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-del-alias]').forEach(b=>b.onclick=()=>{
+    delete S.scorerAliases[b.dataset.delAlias];
+    save();
+    toast('Alias removed');
+  });
 }
 
 function admMatch(f){
@@ -1659,8 +1723,13 @@ function applySync(data){
     }
     if(Array.isArray(m.scorers)){
       r.goals=r.goals||{};
+      const aliases=S.scorerAliases||{};
       m.scorers.forEach(sc=>{
-        const p=S.players.find(pl=>namesMatch(pl.name, sc.name));
+        // Check aliases first (user-mapped garbled names), then fall back to name matcher
+        let p=null;
+        const aliasKey=Object.keys(aliases).find(k=>k.toLowerCase()===sc.name.toLowerCase());
+        if(aliasKey) p=S.players.find(pl=>pl.id===aliases[aliasKey]);
+        if(!p) p=S.players.find(pl=>namesMatch(pl.name, sc.name));
         if(p) r.goals[p.id]=sc.count||1;
       });
     }
