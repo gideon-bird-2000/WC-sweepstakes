@@ -1209,6 +1209,7 @@ function wirePlayerDraft(){
 /* ---------------- ADMIN / UPDATE ---------------- */
 /* ---------------- RESULT LOGGING ---------------- */
 let admFilter="upcoming";
+let admSort="newest";
 function renderResults(){
   const el=document.getElementById('results');
   if(!S.teamDraftDone){
@@ -1218,11 +1219,14 @@ function renderResults(){
       <div class="note">Finish the draft before logging results.</div>`;
     return;
   }
-  let list=FIXTURES.slice().sort((a,b)=>(a.date<b.date?-1:a.date>b.date?1:a.id-b.id));
+  let list=FIXTURES.slice().sort((a,b)=>{
+    const dir=admSort==='newest'?-1:1;
+    return dir*(a.date<b.date?-1:a.date>b.date?1:a.id-b.id);
+  });
   if(admFilter==='played') list=list.filter(isPlayed);
   else if(admFilter==='upcoming') list=list.filter(f=>!isPlayed(f));
   else if(admFilter==='mine') list=list.filter(f=>{const {home,away}=fxTeams(f);return teamOwner(home)||teamOwner(away);});
-  list=list.slice(0,60);
+  list=list.slice(0,120);
 
   el.innerHTML=`
     <p class="eyebrow">Scorekeeping</p>
@@ -1231,13 +1235,19 @@ function renderResults(){
     <div class="panel">
       <h2>Log a Result</h2>
       <div class="ph-sub">Enter the score · winner auto-detected · add goals for any drafted player in the match</div>
-      <div class="seg" style="margin:0 0 16px 0">
-        ${[['upcoming','To play'],['played','Played'],['mine','Mine'],['all','All']].map(([k,l])=>`<button class="${admFilter===k?'on':''}" data-adm="${l==='All'?'all':k}">${l}</button>`).join('')}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px 0">
+        <div class="seg">
+          ${[['upcoming','To play'],['played','Played'],['mine','Mine'],['all','All']].map(([k,l])=>`<button class="${admFilter===k?'on':''}" data-adm="${l==='All'?'all':k}">${l}</button>`).join('')}
+        </div>
+        <div class="seg" style="margin-left:auto">
+          ${[['newest','Newest first'],['oldest','Oldest first']].map(([k,l])=>`<button class="${admSort===k?'on':''}" data-admsort="${k}">${l}</button>`).join('')}
+        </div>
       </div>
       ${list.map(admMatch).join('') || '<div class="note">Nothing here.</div>'}
     </div>`;
 
   el.querySelectorAll('[data-adm]').forEach(b=>b.onclick=()=>{admFilter=b.dataset.adm;renderResults();});
+  el.querySelectorAll('[data-admsort]').forEach(b=>b.onclick=()=>{admSort=b.dataset.admsort;renderResults();});
   el.querySelectorAll('.adm-match').forEach(wireAdmMatch);
 }
 
